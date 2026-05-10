@@ -1116,9 +1116,9 @@ async function renderTicketsEditor() {
     modal.className = 'modal';
     modal.style.display = 'flex';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width: 500px; width: 90%;">
+        <div class="modal-card" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
             <div class="modal-header">
-                <span>📊 Управление тикетами</span>
+                <span>📊 Управление нормой (только сотрудники с нормой)</span>
                 <button class="close-modal" id="closeTicketsEditorBtn">
                     <svg class="icon"><use href="#ic-close"/></svg>
                 </button>
@@ -1152,36 +1152,40 @@ async function renderTicketsEditor() {
         ticketsData = {};
     }
     
-    const members = [
-        { name: "Zoffi", discordId: "1364620438600159262", defaultEventsGoal: 1 },   
-        { name: "Артур П", discordId: "1207948847670890526", defaultEventsGoal: 1 },   
-        { name: "Тявкобай", discordId: "859747626115006474", defaultEventsGoal: 1 },    
-        { name: "кусочек шаурмы", discordId: "636585910552756284", defaultEventsGoal: 4 },
-        { name: "Himas", discordId: "1467081827670954015", defaultEventsGoal: 1 },
-        { name: "Гофикал", discordId: "1135087142385754123", defaultEventsGoal: 1 },
-        { name: "Дмитрий Морозов", discordId: "859747626115006474", defaultEventsGoal: 1 },
-        { name: "Foxy", discordId: "1344959502436532304", defaultEventsGoal: 7 }
-    ];
+    // 👇 ВАЖНО: берем ВСЕХ, у кого есть норма (НЕ младший состав)
+    // То есть: Старший состав + другие категории (кроме младшего)
+    const membersWithNorm = teamData.filter(m => m.category === "Младший состав");
+    
+    if (membersWithNorm.length === 0) {
+        document.getElementById('ticketsEditorBody').innerHTML = '<div style="text-align:center; padding:20px;">Нет сотрудников с нормой</div>';
+        hideGlobalLoading();
+        return;
+    }
     
     let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+    html += '<p style="color: #ffaa44; margin-bottom: 5px;">⚙️ Редактирование нормы для сотрудников (не младший состав)</p>';
     
-    for (const member of members) {
-        const current = ticketsData[member.name] || { done: 0, goal: 25, eventsGoal: member.defaultEventsGoal };
+    for (const member of membersWithNorm) {
+        const current = ticketsData[member.name] || { done: 0, goal: 25, eventsGoal: 2 };
         html += `
             <div style="background: var(--badge-bg); border-radius: 20px; padding: 12px; border: 1px solid var(--card-border);">
-                <div style="font-weight: 700; margin-bottom: 8px;">${member.name}</div>
+                <div style="font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span>${escapeHtml(member.name)}</span>
+                    <span style="font-size: 0.7rem; color: #888;">👑 ${escapeHtml(member.category)}</span>
+                    <span style="font-size: 0.7rem; color: #888;">Discord: ${member.discord || 'не указан'}</span>
+                </div>
                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <div style="flex: 1;">
-                        <label style="font-size: 0.7rem;">Выполнено тикетов</label>
+                    <div style="flex: 1; min-width: 100px;">
+                        <label style="font-size: 0.7rem;">✅ Выполнено тикетов</label>
                         <input type="number" id="tickets_done_${member.name.replace(/\s/g, '_')}" value="${current.done}" class="tickets-input" style="width: 100%; padding: 6px; border-radius: 12px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary);">
                     </div>
-                    <div style="flex: 1;">
-                        <label style="font-size: 0.7rem;">Нужно тикетов</label>
+                    <div style="flex: 1; min-width: 100px;">
+                        <label style="font-size: 0.7rem;">🎯 Нужно тикетов</label>
                         <input type="number" id="tickets_goal_${member.name.replace(/\s/g, '_')}" value="${current.goal}" class="tickets-input" style="width: 100%; padding: 6px; border-radius: 12px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary);">
                     </div>
-                    <div style="flex: 1;">
-                        <label style="font-size: 0.7rem;">Нужно ивентов</label>
-                        <input type="number" id="events_goal_${member.name.replace(/\s/g, '_')}" value="${current.eventsGoal || member.defaultEventsGoal}" class="events-input" style="width: 100%; padding: 6px; border-radius: 12px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary);">
+                    <div style="flex: 1; min-width: 100px;">
+                        <label style="font-size: 0.7rem;">🏆 Нужно ивентов</label>
+                        <input type="number" id="events_goal_${member.name.replace(/\s/g, '_')}" value="${current.eventsGoal || 2}" class="events-input" style="width: 100%; padding: 6px; border-radius: 12px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary);">
                     </div>
                     <button class="save-tickets-btn" data-name="${member.name}" style="background: linear-gradient(95deg, rgba(85,85,85,0.5), rgba(51,51,51,0.5)); border: none; border-radius: 40px; padding: 8px 16px; color: white; cursor: pointer;">💾 Сохранить</button>
                 </div>
@@ -1756,19 +1760,20 @@ navs.forEach(n => {
         else if (tab === 'add_event') renderAddEventForm();
         else if (tab === 'event_adons') renderAddonsPage();
         else if (tab === 'event_guidee') {
-    // Показываем глобальную загрузку с орлом
     showGlobalLoading();
     
-    // Асинхронно загружаем данные
     (async () => {
-        // Загружаем тикеты из Google Sheets (теперь там есть eventsGoal)
+        // Загружаем тикеты из Google Sheets
         const ticketsFromSheet = await loadTicketsFromSheet();
         console.log('Данные из таблицы Тикеты:', ticketsFromSheet);
         
         const totalPrizes = calculateTotalPrizes();
         const eventsCount = eventsData.length;
-        const teamMembersCount = teamData.length;
-        const onlineCount = teamData.filter(m => m.status === "Онлайн").length;
+        
+        // 👇 ИСПРАВЛЕНО: ТОЛЬКО МЛАДШИЙ СОСТАВ
+        const membersWithNorm = teamData.filter(m => m.category === "Младший состав");
+        const teamMembersCount = membersWithNorm.length;
+        const onlineCount = membersWithNorm.filter(m => m.status === "Онлайн").length;
         
         // Подсчитываем ивенты для каждого участника
         const eventCounts = {};
@@ -1778,146 +1783,75 @@ navs.forEach(n => {
                 eventCounts[organizer] = (eventCounts[organizer] || 0) + 1;
             }
         });
-       
-        // Данные по участникам (теперь берем eventsGoal из таблицы Тикеты)
-        const membersStats = {
-            "T1Ran": { 
-                discordId: "1246076621484724320", 
-                eventsGoal: (ticketsFromSheet["T1Ran"] && ticketsFromSheet["T1Ran"].eventsGoal) || 1,
-                eventsDone: eventCounts["T1Ran"] || 0, 
-                inDepartment: false 
-            },
-            "somcop": { 
-                discordId: "989919183036874772", 
-                eventsGoal: (ticketsFromSheet["somcop"] && ticketsFromSheet["somcop"].eventsGoal) || 1,
-                eventsDone: eventCounts["somcop"] || 0, 
-                inDepartment: false 
-            },
-            "Гарик Халамовв": { 
-                discordId: "1064190272789041293", 
-                eventsGoal: (ticketsFromSheet["Гарик Халамовв"] && ticketsFromSheet["Гарик Халамовв"].eventsGoal) || 1,
-                eventsDone: eventCounts["Гарик Халамовв"] || 0, 
-                inDepartment: false 
-            },
-            "Zoffi": { 
-                discordId: "1364620438600159262", 
-                eventsGoal: (ticketsFromSheet["Zoffi"] && ticketsFromSheet["Zoffi"].eventsGoal) || 0,
-                eventsDone: eventCounts["Zoffi"] || 0, 
-                ticketsDone: (ticketsFromSheet["Zoffi"] && ticketsFromSheet["Zoffi"].done) || 0,
-                ticketsGoal: (ticketsFromSheet["Zoffi"] && ticketsFromSheet["Zoffi"].goal) || 0,
-                inDepartment: true 
-            },
-            "Артур П": { 
-                discordId: "1207948847670890526", 
-                eventsGoal: (ticketsFromSheet["Артур П"] && ticketsFromSheet["Артур П"].eventsGoal) || 0,
-                eventsDone: eventCounts["Артур П"] || 0, 
-                ticketsDone: (ticketsFromSheet["Артур П"] && ticketsFromSheet["Артур П"].done) || 0,
-                ticketsGoal: (ticketsFromSheet["Артур П"] && ticketsFromSheet["Артур П"].goal) || 0,
-                inDepartment: true 
-            },
-            "Тявкобай": { 
-                discordId: "859747626115006474", 
-                eventsGoal: (ticketsFromSheet["Тявкобай"] && ticketsFromSheet["Тявкобай"].eventsGoal) || 0,
-                eventsDone: eventCounts["Тявкобай"] || 0, 
-                ticketsDone: (ticketsFromSheet["Тявкобай"] && ticketsFromSheet["Тявкобай"].done) || 0,
-                ticketsGoal: (ticketsFromSheet["Тявкобай"] && ticketsFromSheet["Тявкобай"].goal) || 0,
-                inDepartment: true 
-            },
-            "Дмитрий Морозов": { 
-                discordId: "859747626115006474", 
-                eventsGoal: (ticketsFromSheet["Дмитрий Морозов"] && ticketsFromSheet["Дмитрий Морозов"].eventsGoal) || 0,
-                eventsDone: eventCounts["Дмитрий Морозов"] || 0, 
-                ticketsDone: (ticketsFromSheet["Дмитрий Морозов"] && ticketsFromSheet["Дмитрий Морозов"].done) || 0,
-                ticketsGoal: (ticketsFromSheet["Дмитрий Морозов"] && ticketsFromSheet["Дмитрий Морозов"].goal) || 0,
-                inDepartment: true 
-            },
-            "кусочек шаурмы": { 
-                discordId: "636585910552756284", 
-                eventsGoal: (ticketsFromSheet["кусочек шаурмы"] && ticketsFromSheet["кусочек шаурмы"].eventsGoal) || 0,
-                eventsDone: eventCounts["кусочек шаурмы"] || 0,
-                ticketsDone: (ticketsFromSheet["кусочек шаурмы"] && ticketsFromSheet["кусочек шаурмы"].done) || 0,
-                ticketsGoal: (ticketsFromSheet["кусочек шаурмы"] && ticketsFromSheet["кусочек шаурмы"].goal) || 0,
-                inDepartment: true 
-            },
-            "Himas": { 
-                discordId: "1467081827670954015", 
-                eventsGoal: (ticketsFromSheet["Himas"] && ticketsFromSheet["Himas"].eventsGoal) || 0,
-                eventsDone: eventCounts["Himas"] || 0,
-                ticketsDone: (ticketsFromSheet["Himas"] && ticketsFromSheet["Himas"].done) || 0,
-                ticketsGoal: (ticketsFromSheet["Himas"] && ticketsFromSheet["Himas"].goal) || 0,
-                reason: "Есть причина", 
-                inDepartment: true 
-            },
-            "Гофикал": { 
-                discordId: "1135087142385754123", 
-                eventsGoal: (ticketsFromSheet["Гофикал"] && ticketsFromSheet["Гофикал"].eventsGoal) || 0,
-                eventsDone: eventCounts["Гофикал"] || 0,
-                ticketsDone: (ticketsFromSheet["Гофикал"] && ticketsFromSheet["Гофикал"].done) || 0,
-                ticketsGoal: (ticketsFromSheet["Гофикал"] && ticketsFromSheet["Гофикал"].goal) || 0,
-                inDepartment: true 
-            },
-        };
         
-        // СОБИРАЕМ СТРОКИ ДЛЯ КОПИРОВАНИЯ (ДРУГОЙ ОТДЕЛ)
-        let otherDeptLinesForCopy = [];
-        let otherDeptHtml = '';
+        // Формируем данные
+        const membersStats = [];
         
-        for (const [name, stats] of Object.entries(membersStats)) {
-            if (!stats.inDepartment) {
-                const isCompleted = stats.eventsDone >= stats.eventsGoal;
-                const icon = isCompleted ? '✅' : '❌';
-                
-                // Строка для копирования (с Discord ID)
-                const copyLine = `<@${stats.discordId}> - Ивенты: ${stats.eventsDone}/${stats.eventsGoal} ${icon}`;
-                otherDeptLinesForCopy.push(copyLine);
-                
-                // Отображение на сайте (с именем)
-                otherDeptHtml += `
-                    <div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">
-                        <strong>${name}</strong> - Ивенты: ${stats.eventsDone}/${stats.eventsGoal} ${icon}
-                    </div>
-                `;
-            }
+        for (const member of membersWithNorm) {
+            const memberName = member.name;
+            const ticketsData = ticketsFromSheet[memberName] || { done: 0, goal: 25, eventsGoal: 1 };
+            
+            membersStats.push({
+                name: memberName,
+                discordId: member.discord || '',
+                eventsDone: eventCounts[memberName] || 0,
+                eventsGoal: ticketsData.eventsGoal || 2,
+                ticketsDone: ticketsData.done || 0,
+                ticketsGoal: ticketsData.goal || 25,
+                status: member.status || 'Онлайн',
+                role: member.role || '',
+                category: member.category
+            });
         }
         
-        // СОБИРАЕМ СТРОКИ ДЛЯ КОПИРОВАНИЯ (ПОЛНОЦЕННЫЙ ОТДЕЛ)
-        let fullDeptLinesForCopy = [];
-        let fullDeptHtml = '';
+        // Сортируем по имени
+        membersStats.sort((a, b) => a.name.localeCompare(b.name));
         
-        for (const [name, stats] of Object.entries(membersStats)) {
-            if (stats.inDepartment) {
-                const isEventsCompleted = stats.eventsDone >= stats.eventsGoal;
-                const eventsIcon = isEventsCompleted ? '✅' : '❌';
-                
-                const isTicketsCompleted = (stats.ticketsDone || 0) >= (stats.ticketsGoal || 0);
-                const ticketsIcon = isTicketsCompleted ? '✅' : '❌';
-                
-                // Строка для копирования (с Discord ID)
-                const copyLine = `<@${stats.discordId}> - Ивенты: ${stats.eventsDone}/${stats.eventsGoal} ${eventsIcon} | Тикеты: ${stats.ticketsDone || 0}/${stats.ticketsGoal || 25} ${ticketsIcon}`;
-                fullDeptLinesForCopy.push(copyLine);
-                
-                // Отображение на сайте (с именем)
-                fullDeptHtml += `
-                    <div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">
-                        <strong>${name}</strong> - Ивенты: ${stats.eventsDone}/${stats.eventsGoal} ${eventsIcon} | Тикеты: ${stats.ticketsDone || 0}/${stats.ticketsGoal || 25} ${ticketsIcon}
+        // Формируем HTML
+        let membersHtml = '';
+        let membersLinesForCopy = [];
+        
+        for (const stats of membersStats) {
+            const isEventsCompleted = stats.eventsDone >= stats.eventsGoal;
+            const eventsIcon = isEventsCompleted ? '✅' : '❌';
+            
+            const isTicketsCompleted = (stats.ticketsDone || 0) >= (stats.ticketsGoal || 25);
+            const ticketsIcon = isTicketsCompleted ? '✅' : '❌';
+            
+            let statusIcon = '';
+            if (stats.status === 'Онлайн') statusIcon = '🟢';
+            else if (stats.status === 'Заморозка') statusIcon = '⏸️';
+            else if (stats.status === 'Отпуск') statusIcon = '🏖️';
+            else statusIcon = '⚫';
+            
+            const copyLine = `<@${stats.discordId}> - ${statusIcon} Ивенты: ${stats.eventsDone}/${stats.eventsGoal} ${eventsIcon} | Тикеты: ${stats.ticketsDone || 0}/${stats.ticketsGoal || 25} ${ticketsIcon}`;
+            membersLinesForCopy.push(copyLine);
+            
+            membersHtml += `
+                <div style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="flex: 2;">
+                        <strong style="color: #ffd6aa;">${escapeHtml(stats.name)}</strong>
+                        <span style="font-size: 0.7rem; color: #888; margin-left: 8px;">${escapeHtml(stats.role)}</span>
+                        <span style="font-size: 0.7rem; margin-left: 8px;">${statusIcon} ${stats.status}</span>
                     </div>
-                `;
-            }
+                    <div style="flex: 3; display: flex; gap: 20px; flex-wrap: wrap;">
+                        <span>🎯 Ивенты: <strong>${stats.eventsDone}/${stats.eventsGoal}</strong> ${eventsIcon}</span>
+                        <span>🎫 Тикеты: <strong>${stats.ticketsDone || 0}/${stats.ticketsGoal || 25}</strong> ${ticketsIcon}</span>
+                    </div>
+                </div>
+            `;
         }
         
-        // Объединяем строки для каждого раздела
-        const otherDeptTextToCopy = otherDeptLinesForCopy.join('\n');
-        const fullDeptTextToCopy = fullDeptLinesForCopy.join('\n');
+        const allMembersTextToCopy = membersLinesForCopy.join('\n');
         
         const ticketsEditorButton = isEditor ? `
             <div style="text-align: right; margin-bottom: 15px;">
                 <button id="ticketsEditorFromNormBtn" style="background: linear-gradient(95deg, rgba(85,85,85,0.5), rgba(51,51,51,0.5)); border: none; border-radius: 40px; padding: 8px 16px; color: white; cursor: pointer; font-size: 0.8rem;">
-                    Управление Нормой
+                    📊 Управление нормой
                 </button>
             </div>
         ` : '';
         
-        // Вставляем HTML
         document.getElementById('eventDynamicContent').innerHTML = `
             <style>
                 .norm-container {
@@ -1927,14 +1861,12 @@ navs.forEach(n => {
                     border: 1px solid var(--card-border);
                     backdrop-filter: blur(20px);
                 }
-                
                 .norm-header {
                     text-align: center;
                     margin-bottom: 2rem;
                     padding-bottom: 1rem;
                     border-bottom: 1px solid var(--table-row-border);
                 }
-                
                 .norm-header h2 {
                     font-size: 1.8rem;
                     font-weight: 700;
@@ -1944,34 +1876,19 @@ navs.forEach(n => {
                     color: transparent;
                     margin-bottom: 0.5rem;
                 }
-                
-                .norm-header p {
-                    color: var(--text-muted);
-                    font-size: 0.85rem;
-                }
-                
                 .norm-stats-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                     gap: 1rem;
                     margin-bottom: 2rem;
                 }
-                
                 .norm-stat-card {
                     background: rgba(0,0,0,0.2);
                     border-radius: 24px;
                     padding: 1.2rem;
                     text-align: center;
                     border: 1px solid var(--card-border);
-                    backdrop-filter: blur(12px);
-                    transition: transform 0.2s;
                 }
-                
-                .norm-stat-card:hover {
-                    transform: translateY(-3px);
-                    border-color: rgba(95, 95, 91, 0.3);
-                }
-                
                 .norm-stat-value {
                     font-size: 2.5rem;
                     font-weight: 800;
@@ -1980,7 +1897,6 @@ navs.forEach(n => {
                     background-clip: text;
                     color: transparent;
                 }
-                
                 .norm-stat-label {
                     font-size: 0.7rem;
                     text-transform: uppercase;
@@ -1988,37 +1904,32 @@ navs.forEach(n => {
                     color: var(--text-muted);
                     margin-top: 0.3rem;
                 }
-                
                 .member-stats-section {
                     margin-top: 2rem;
                     margin-bottom: 2rem;
                 }
-                
                 .member-stats-title {
                     font-size: 1.2rem;
                     font-weight: 700;
                     color: #ffffff;
                     margin-bottom: 1rem;
                     padding-left: 0.5rem;
-                    border-left: 4px solid #c1c0be;
+                    border-left: 4px solid #c9a0ff;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                     flex-wrap: wrap;
                     gap: 10px;
                 }
-                
                 .member-stats-block {
                     background: rgba(0,0,0,0.2);
                     border-radius: 24px;
                     padding: 1.2rem;
-                    font-family: monospace;
                     font-size: 0.9rem;
                     line-height: 1.8;
                     color: var(--text-primary);
                     border: 1px solid var(--card-border);
                 }
-                
                 .member-stats-note {
                     margin-top: 1rem;
                     font-size: 0.7rem;
@@ -2027,75 +1938,27 @@ navs.forEach(n => {
                     padding-top: 0.8rem;
                     border-top: 1px solid var(--card-border);
                 }
-                
-                .norm-week {
-                    margin-top: 1.5rem;
-                    background: rgba(0,0,0,0.2);
-                    border-radius: 24px;
-                    padding: 1.2rem;
-                    border: 1px solid var(--card-border);
-                }
-                
-                .norm-week-title {
-                    font-size: 0.85rem;
-                    font-weight: 700;
-                    margin-bottom: 1rem;
-                    color: #e0e0e0;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                
-                .norm-week-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                    gap: 0.8rem;
-                }
-                
-                .norm-day-card {
-                    background: rgba(0,0,0,0.15);
-                    border-radius: 16px;
-                    padding: 0.8rem;
-                    text-align: center;
-                    border: 1px solid var(--card-border);
-                }
-                
-                .norm-day-name {
-                    font-size: 0.7rem;
-                    font-weight: 700;
-                    color: #a5a5a4;
-                    margin-bottom: 0.3rem;
-                }
-                
-                .norm-day-value {
-                    font-size: 0.7rem;
-                    color: var(--text-secondary);
-                }
-                
                 .copy-section-btn {
-    background: var(--badge-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 40px;
-    padding: 8px 20px;
-    color: var(--text-primary);
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    backdrop-filter: blur(8px);
-}
-
-.copy-section-btn:hover {
-    background: var(--input-bg);
-    border-color: rgba(255,255,255,0.3);
-    transform: scale(1.02);
-}
+                    background: var(--badge-bg);
+                    border: 1px solid var(--card-border);
+                    border-radius: 40px;
+                    padding: 8px 20px;
+                    color: var(--text-primary);
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                }
+                .copy-section-btn:hover {
+                    background: var(--input-bg);
+                    border-color: rgba(255,255,255,0.3);
+                }
             </style>
             
             <div class="norm-container">
                 <div class="norm-header">
-                    <h2>НОРМА ОТДЕЛА</h2>
-                    <p>Статистика и выполнение норм сотрудниками</p>
+                    <h2>📊 НОРМА ОТДЕЛА</h2>
+                    <p>Статистика выполнения норм (младший состав)</p>
                 </div>
                 
                 ${ticketsEditorButton}
@@ -2103,102 +1966,61 @@ navs.forEach(n => {
                 <div class="norm-stats-grid">
                     <div class="norm-stat-card">
                         <div class="norm-stat-value">${teamMembersCount}</div>
-                        <div class="norm-stat-label">Ивентеров</div>
+                        <div class="norm-stat-label">👥 Младший состав</div>
                     </div>
                     <div class="norm-stat-card">
                         <div class="norm-stat-value">${eventsCount}</div>
-                        <div class="norm-stat-label">Проведено ивентов</div>
+                        <div class="norm-stat-label">📅 Проведено ивентов</div>
                     </div>
                     <div class="norm-stat-card">
                         <div class="norm-stat-value">${onlineCount}</div>
-                        <div class="norm-stat-label">Сейчас онлайн</div>
+                        <div class="norm-stat-label">🟢 Сейчас онлайн</div>
                     </div>
                     <div class="norm-stat-card">
                         <div class="norm-stat-value" style="color: #5fe147;">${totalPrizes.toLocaleString('ru-RU')}$</div>
-                        <div class="norm-stat-label">Всего призовых</div>
+                        <div class="norm-stat-label">💰 Всего призовых</div>
                     </div>
                 </div>
                 
                 <div class="member-stats-section">
                     <div class="member-stats-title">
-                        <span>В другом отделе</span>
-                        <button class="copy-section-btn" id="copyOtherDeptBtn">📋 Копировать строки</button>
+                        <span>📋 МЛАДШИЙ СОСТАВ (с нормой)</span>
+                        <button class="copy-section-btn" id="copyAllMembersBtn">📋 Копировать строки</button>
                     </div>
                     <div class="member-stats-block">
-                        ${otherDeptHtml || 'Нет данных'}
-                    </div>
-                </div>
-                
-                <div class="member-stats-section">
-                    <div class="member-stats-title">
-                        <span>Полноценно в отделе</span>
-                        <button class="copy-section-btn" id="copyFullDeptBtn">📋 Копировать строки</button>
-                    </div>
-                    <div class="member-stats-block">
-                        ${fullDeptHtml || 'Нет данных'}
+                        ${membersHtml || '<div style="text-align:center; padding:20px;">Нет сотрудников в младшем составе</div>'}
                     </div>
                     <div class="member-stats-note">
                         ✅ - норма выполнена | ❌ - норма не выполнена<br>
-                        Ивенты считаются автоматически, норма ивентов берется из таблицы "Тикеты"<br>
-                        📋 Нажмите на кнопку "Копировать строки", чтобы скопировать строки с Discord упоминаниями
-                    </div>
-                </div>
-                
-                <div class="norm-week">
-                    <div class="norm-week-title">Норма после отпуска/вступления</div>
-                    <div class="norm-week-grid">
-                        <div class="norm-day-card"><div class="norm-day-name">ПН</div><div class="norm-day-value">35 тикетов | 3 ивента</div></div>
-                        <div class="norm-day-card"><div class="norm-day-name">ВТ</div><div class="norm-day-value">35 тикетов | 3 ивента</div></div>
-                        <div class="norm-day-card"><div class="norm-day-name">СР</div><div class="norm-day-value">30 тикетов | 2 ивента</div></div>
-                        <div class="norm-day-card"><div class="norm-day-name">ЧТ</div><div class="norm-day-value">25 тикетов | 1 ивент</div></div>
-                        <div class="norm-day-card"><div class="norm-day-name">ПТ</div><div class="norm-day-value">20 тикетов | 1 ивент</div></div>
-                        <div class="norm-day-card"><div class="norm-day-name">СБ</div><div class="norm-day-value">10 тикетов | 1 ивент</div></div>
-                        <div class="norm-day-card"><div class="norm-day-name">ВС</div><div class="norm-day-value">Освобождены</div></div>
+                        🎫 Тикеты и 🎯 Ивенты считаются автоматически
                     </div>
                 </div>
             </div>
         `;
         
-        // Функция для копирования текста
         async function copyToClipboard(text, btn, successMessage) {
             try {
                 await navigator.clipboard.writeText(text);
                 showNotif(successMessage);
-                
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '✅ Скопировано!';
-                btn.style.background = 'linear-gradient(95deg, #4caf50, #45a049)';
-                
                 setTimeout(() => {
                     btn.innerHTML = originalText;
-                    btn.style.background = 'linear-gradient(95deg, #ffaa44, #ff8844)';
                 }, 2000);
-                
             } catch (err) {
                 showNotif('❌ Не удалось скопировать', true);
             }
         }
         
-        // Кнопка для раздела "В другом отделе"
-        const copyOtherDeptBtn = document.getElementById('copyOtherDeptBtn');
-        if (copyOtherDeptBtn && otherDeptTextToCopy) {
-            copyOtherDeptBtn.addEventListener('click', () => {
-                copyToClipboard(otherDeptTextToCopy, copyOtherDeptBtn, `✅ Скопировано ${otherDeptLinesForCopy.length} строк!`);
+        const copyAllBtn = document.getElementById('copyAllMembersBtn');
+        if (copyAllBtn && allMembersTextToCopy) {
+            copyAllBtn.addEventListener('click', () => {
+                copyToClipboard(allMembersTextToCopy, copyAllBtn, `✅ Скопировано ${membersStats.length} строк!`);
             });
         }
         
-        // Кнопка для раздела "Полноценно в отделе"
-        const copyFullDeptBtn = document.getElementById('copyFullDeptBtn');
-        if (copyFullDeptBtn && fullDeptTextToCopy) {
-            copyFullDeptBtn.addEventListener('click', () => {
-                copyToClipboard(fullDeptTextToCopy, copyFullDeptBtn, `✅ Скопировано ${fullDeptLinesForCopy.length} строк!`);
-            });
-        }
-        
-        // Скрываем загрузку после того как всё отрисовалось
         hideGlobalLoading();
         
-        // Добавляем обработчик для кнопки управления тикетами
         if (isEditor) {
             const ticketsEditorBtn = document.getElementById('ticketsEditorFromNormBtn');
             if (ticketsEditorBtn) {
@@ -2209,6 +2031,7 @@ navs.forEach(n => {
         }
     })();
 }
+   
         else if (tab === 'event_guide') {
     document.getElementById('eventDynamicContent').innerHTML = ` 
         <style>
