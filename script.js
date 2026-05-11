@@ -24,6 +24,7 @@ const CLOUDFLARE_API = 'https://event-bot-api.roman-gonchukov.workers.dev';
 const COMMENTS_API_URL = 'https://script.google.com/macros/s/AKfycby9adWhQ0tCOAQ-p-6j8aEp0PNAoEdESPD2o9db42dDE9_H8Yu-HjiXJ4YB1gbG4Cl-9g/exec';
 
 const avatarMap = {
+    "Gl1tchFrost": "https://shared.fastly.steamstatic.com/community_assets/images/items/2861720/5ae020a665661d3e6499da7fb601f373fa998228.gif",
     "Zoffi" : "https://avatars.akamai.steamstatic.com/b65685aae297d33e2263633211872decb95191b6_full.jpg",
     "Артур П" : "https://avatars.akamai.steamstatic.com/613bc9ebf037ac39219ed8f1240f6d2c8d85518b_full.jpg",
     "Тявкобай" : "https://avatars.akamai.steamstatic.com/61ab70962972708287fbe01bbf30a073e02557fb_full.jpg",
@@ -2749,19 +2750,25 @@ function updateSidebarAvatar(username) {
     if (!avatarImg) return;
 
     const avatarMap = {
-        "T1Ran": "https://avatars.akamai.steamstatic.com/57dac1d4d44de03338708c08310198b23192ab51_full.jpg", 
-        "manisule": "https://avatars.akamai.steamstatic.com/3973c828510cfd75f32b6a4d09bffa642f6c975f_full.jpg",
-        "Гербикс": "https://avatars.akamai.steamstatic.com/3acd2544afbc953feb4af6da64440fa4bf48618e_full.jpg",
-        "Arbuz madrazo": "https://avatars.akamai.steamstatic.com/60c2b352131f11a8bcbd08f452decd9dfea10a32_full.jpg",
-        "somcop": "https://avatars.akamai.steamstatic.com/181420ae4a4f46eabd79c3b6b56e5e5e70aa4b91_full.jpg",
-        "Foxy": "https://avatars.akamai.steamstatic.com/e2ae91fee516fc12a05fbfe995f52891db03c63f_full.jpg",
-        "Дмитрий Морозов": "https://avatars.akamai.steamstatic.com/5a54395d65879aed3fc59787f1d9eaf21a839ff5_full.jpg",
-        "Гофикал": "https://avatars.akamai.steamstatic.com/ed77d818ec20ca4aad3417f5033647f79229c92a_full.jpg",
-        "Himas": "https://avatars.akamai.steamstatic.com/40ddf358c9028e084e617b8edecfdc620e5c12c9_full.jpg",
-        "yaroslav1432": "https://shared.akamai.steamstatic.com/community_assets/images/items/1313140/4ae9f2b8739631ea806a9508785f0445557e9bff.gif",
-        "кусочек шаурмы": "https://avatars.akamai.steamstatic.com/a350434d0216c11358393f13cf8a95bfcf1509db_full.jpg",
-        "gans7824": "https://avatars.akamai.steamstatic.com/7ccb0ac2e182c765a7ddf35bb64dde75e26ddfc2_full.jpg"
-    };
+    "Gl1tchFrost": "https://shared.fastly.steamstatic.com/community_assets/images/items/2861720/5ae020a665661d3e6499da7fb601f373fa998228.gif",
+    "Zoffi" : "https://avatars.akamai.steamstatic.com/b65685aae297d33e2263633211872decb95191b6_full.jpg",
+    "Артур П" : "https://avatars.akamai.steamstatic.com/613bc9ebf037ac39219ed8f1240f6d2c8d85518b_full.jpg",
+    "Тявкобай" : "https://avatars.akamai.steamstatic.com/61ab70962972708287fbe01bbf30a073e02557fb_full.jpg",
+    "ki-p": "https://avatars.akamai.steamstatic.com/7c0568b92eabda5703516fa7e03ba4676d8b03e5_full.jpg",
+    "T1Ran": "https://avatars.akamai.steamstatic.com/57dac1d4d44de03338708c08310198b23192ab51_full.jpg",
+    "manisule": "https://avatars.akamai.steamstatic.com/3973c828510cfd75f32b6a4d09bffa642f6c975f_full.jpg",
+    "Гербикс": "https://avatars.akamai.steamstatic.com/3acd2544afbc953feb4af6da64440fa4bf48618e_full.jpg",
+    "Arbuz Madrazo": "https://avatars.akamai.steamstatic.com/60c2b352131f11a8bcbd08f452decd9dfea10a32_full.jpg",
+    "somcop": "https://avatars.akamai.steamstatic.com/181420ae4a4f46eabd79c3b6b56e5e5e70aa4b91_full.jpg",
+    "Foxy": "https://avatars.akamai.steamstatic.com/e2ae91fee516fc12a05fbfe995f52891db03c63f_full.jpg",
+    "Дмитрий Морозов": "https://avatars.akamai.steamstatic.com/5a54395d65879aed3fc59787f1d9eaf21a839ff5_full.jpg",
+    "Гофикал": "https://avatars.akamai.steamstatic.com/ed77d818ec20ca4aad3417f5033647f79229c92a_full.jpg",
+    "Himas": "https://avatars.akamai.steamstatic.com/40ddf358c9028e084e617b8edecfdc620e5c12c9_full.jpg",
+    "yaroslav1432": "https://shared.akamai.steamstatic.com/community_assets/images/items/1313140/4ae9f2b8739631ea806a9508785f0445557e9bff.gif",
+    "кусочек шаурмы": "https://avatars.akamai.steamstatic.com/a350434d0216c11358393f13cf8a95bfcf1509db_full.jpg",
+    "Гарик Харламовв" : "https://avatars.akamai.steamstatic.com/9dd518738e6c1db81cf5184e3ae43c2ac5150ada_full.jpg",
+    "gans7824": "https://avatars.akamai.steamstatic.com/7ccb0ac2e182c765a7ddf35bb64dde75e26ddfc2_full.jpg"
+};
     
     const newAvatar = avatarMap[username] || "https://i.ytimg.com/vi/_pMmC52HB2k/hqdefault.jpg";
     avatarImg.src = newAvatar;
