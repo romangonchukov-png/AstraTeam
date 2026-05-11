@@ -21,7 +21,7 @@ let isEditor = false;
 // ВСЁ! Никаких Object.defineProperty, никаких дополнительных блоков!
 
 const CLOUDFLARE_API = 'https://event-bot-api.roman-gonchukov.workers.dev';
-const COMMENTS_API_URL = 'https://script.google.com/macros/s/AKfycby9adWhQ0tCOAQ-p-6j8aEp0PNAoEdESPD2o9db42dDE9_H8Yu-HjiXJ4YB1gbG4Cl-9g/exec';
+const COMMENTS_API_URL = 'https://script.google.com/macros/s/AKfycbyBXXBDtEM9cXJCmmxePbjqZFYi3zkkfsTByAyt5Nzl_wGJkpQyYH346NN7OG1EgYUW0A/exec';
 
 const avatarMap = {
     "Gl1tchFrost": "https://shared.fastly.steamstatic.com/community_assets/images/items/2861720/5ae020a665661d3e6499da7fb601f373fa998228.gif",
@@ -737,22 +737,22 @@ function addEventToSheet(eventData) {
         window[callbackName] = (data) => {
             delete window[callbackName];
             document.body.removeChild(script);
+            console.log('📥 Ответ от сервера при добавлении:', data);
             resolve(data);
         };
         
         const params = new URLSearchParams({
-    action: 'addEvent',
-    name: eventData.name,
-    platform: eventData.platform,
-    organizer: eventData.organizer,    // ← ОРГАНИЗАТОР
-    helpers: eventData.helpers,        // ← ПОМОЩНИКИ
-    date: eventData.date,
-    status: eventData.status,
-    rating: eventData.rating,
-    members: eventData.members,
-    description: eventData.description,
-    callback: callbackName
-});
+            action: 'addEvent',
+            name: eventData.name,
+            organizer: eventData.organizer,
+            helpers: eventData.helpers,
+            date: eventData.date,
+            status: eventData.status || 'Проведен',
+            rating: eventData.rating,
+            members: eventData.members,
+            description: eventData.description,
+            callback: callbackName
+        });
         
         script.src = `${EVENTS_API_URL}?${params.toString()}`;
         script.onerror = () => {
@@ -766,35 +766,55 @@ function addEventToSheet(eventData) {
 
 function loadEventsFromSheet() {
     return new Promise((resolve) => {
-        const callbackName = 'jsonp_events_' + Date.now();
+        const callbackName = 'jsonp_events_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
         const script = document.createElement('script');
         
         window[callbackName] = (data) => {
             delete window[callbackName];
             document.body.removeChild(script);
             console.log('📊 Ивенты из таблицы:', data);
-            resolve(Array.isArray(data) ? data : []);
+            
+            // Проверяем, что данные корректны
+            if (Array.isArray(data)) {
+                resolve(data);
+            } else if (data && data.error) {
+                console.error('Ошибка загрузки:', data.error);
+                resolve([]);
+            } else {
+                resolve([]);
+            }
         };
         
         script.src = `${COMMENTS_API_URL}?action=getEvents&callback=${callbackName}`;
         script.onerror = () => {
             delete window[callbackName];
+            document.body.removeChild(script);
+            console.error('❌ Ошибка загрузки ивентов');
             resolve([]);
         };
+        
+        // Таймаут 10 секунд
+        setTimeout(() => {
+            if (window[callbackName]) {
+                console.warn('⚠️ Таймаут загрузки ивентов');
+                delete window[callbackName];
+                resolve([]);
+            }
+        }, 10000);
+        
         document.body.appendChild(script);
     });
 }
 
 async function refreshEventsData() {
     const events = await loadEventsFromSheet();
-    console.log('Загружено ивентов из таблицы:', events);
+    console.log('📊 Загружено ивентов из таблицы:', events);
     
     if (events && events.length > 0) {
         eventsData = events.map(e => ({
             id: e.id,
             name: e.name || 'Без названия',
-            platform: e.organizer || e.platform || 'Неизвестно',
-            organizer: e.organizer || e.platform || 'Неизвестно',
+            organizer: e.organizer || 'Неизвестно',
             helpers: e.helpers || 'Нет',
             date: e.date || 'Дата не указана',
             status: e.status || 'Проведен',
@@ -804,10 +824,24 @@ async function refreshEventsData() {
             fullDetails: { description: e.description || '' }
         }));
         
+        // Сохраняем в localStorage
+        saveAllData();
+        
+        // Перерисовываем таблицу
         renderEventsTable();
+        
+        // Обновляем норму, если открыта
+        const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
+        if (activeTab === 'event_guidee') {
+            // Перезагружаем страницу нормы
+            document.querySelector('[data-tab="event_guidee"]').click();
+        }
+        
         showNotif('📊 Ивенты обновлены');
     } else {
         console.log('Нет ивентов в таблице');
+        eventsData = [];
+        renderEventsTable();
     }
 }
 
@@ -964,7 +998,6 @@ async function addMemberToSheet(memberData) {
         document.body.appendChild(script);
     });
 }
-
 async function refreshTeamData() {
     showGlobalLoading();
     
@@ -982,14 +1015,22 @@ async function refreshTeamData() {
                 status: m.status || 'Онлайн',
                 eventsCount: '-',
                 joinDate: m.joinDate,
-                rating: m.rating || '3',
+                rating: m.rating || 'Нет ранга',
                 category: m.category || 'Младший состав'
             }));
             
             console.log('✅ Команда обновлена, участников:', teamData.length);
+            saveTeamToLocalStorage();
             
-            // ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ
-            renderTeamTable();
+            // ОБНОВЛЯЕМ ТАБЛИЦУ ИВЕНТОВ И СТАТИСТИКУ
+            await refreshEventsData();  // ← ВАЖНО! Обновляем ивенты
+            renderTeamTable();          // Перерисовываем команду
+            renderEventsTable();        // Перерисовываем ивенты (обновит статистику)
+            
+            // Обновляем статистику пользователя в настройках
+            if (typeof updateStatsDisplay === 'function') {
+                updateStatsDisplay();
+            }
         } else {
             console.log('⚠️ Нет данных из Google Sheets');
         }
@@ -1409,9 +1450,9 @@ function renderEventsTable() {
         <div class="click-hint">🔽 ${showActions ? 'Вы можете редактировать и удалять СВОИ ивенты' : '🔽 Режим просмотра'}</div>
         <div class="table-wrapper">
             <table class="data-table">
-                <thead><tr><th>ИВЕНТ</th><th>ОРГАНИЗАТОР</th><th>ПОМОЩНИКИ</th><th>ДАТА</th><th>СТАТУС</th><th>ПРИЗОВЫЕ</th><th>УЧАСТНИКИ</th><th>ОДОБРЕН</th>${showActions ? '<th>ДЕЙСТВИЯ</th>' : ''}</td></thead>
+                <thead><tr><th>ИВЕНТ</th><th>ОРГАНИЗАТОР</th><th>ПОМОЩНИКИ</th><th>ДАТА</th><th>СТАТУС</th><th>ПРИЗОВЫЕ</th><th>УЧАСТНИКИ</th><th>ОДОБРЕН</th>${showActions ? '<th>ДЕЙСТВИЯ</th>' : ''}</tr></thead>
                 <tbody id="eventsTableBody"></tbody>
-            </table>
+             </table>
         </div>
     `;
     
@@ -1424,7 +1465,7 @@ function renderEventsTable() {
         row.setAttribute('data-type', 'event');
         row.setAttribute('data-id', event.id);
         row.insertCell(0).innerHTML = `<strong>${escapeHtml(event.name)}</strong>`;
-        row.insertCell(1).textContent = event.organizer || event.platform;  // ОРГАНИЗАТОР (кто проводил)
+        row.insertCell(1).textContent = event.organizer;
         row.insertCell(2).textContent = event.helpers;
         row.insertCell(3).textContent = event.date;
         row.insertCell(4).innerHTML = `<span class="status-badge status-active">${event.status}</span>`;
@@ -1433,64 +1474,64 @@ function renderEventsTable() {
         row.insertCell(7).innerHTML = `<span style="background:var(--badge-bg); padding:0.2rem 0.6rem; border-radius:20px;">${event.callStatus}</span>`;
         
         if (showActions) {
-    const cell = row.insertCell(8);
-    // Проверяем, может ли пользователь редактировать ЭТОТ ивент
-    const canModify = isEditor || (currentUser && currentUser === event.platform);
-    
-    // Кнопки статусов - ТОЛЬКО для создателя (isEditor)
-    const statusButtons = isEditor ? `
-        <button class="status-change-btn btn-approved" data-id="${event.id}" data-status="✅Одобрен">✅ Одобрен</button>
-        <button class="status-change-btn btn-soon" data-id="${event.id}" data-status="🟡Скоро">🟡 Скоро</button>
-        <button class="status-change-btn btn-completed" data-id="${event.id}" data-status="🔴Отказано">🔴 Отказано</button>
-    ` : '';
-    
-    // Кнопки редактирования/удаления - для создателя ИЛИ организатора ивента
-    const editButtons = canModify ? `
-    <button class="edit-event-btn" data-id="${event.id}" style="margin-top:5px;">Редактировать</button>
-    <button class="delete-event-btn" data-id="${event.id}" style="margin-top:5px;">Удалить</button>                           
-` : '';
-    
-    cell.innerHTML = statusButtons + editButtons;
-    
-    // ПРЯМЫЕ ОБРАБОТЧИКИ на кнопки (чтобы не было всплытия)
-    if (canModify) {
-        const editBtn = cell.querySelector('.edit-event-btn');
-        const deleteBtn = cell.querySelector('.delete-event-btn');
-        
-        if (editBtn) {
-            editBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log('Редактирование ивента:', event.id);
-                openEditEventModal(event.id);
-            });
-        }
-        
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log('Удаление ивента:', event.id);
-                if (confirm('🗑️ Удалить ивент навсегда? Это действие нельзя отменить!')) {
-                    deleteEventHandler(event.id);
+            const cell = row.insertCell(8);
+            // ИСПРАВЛЕНО: сравниваем с event.organizer
+            const canModify = isEditor || (currentUser && currentUser === event.organizer);
+            
+            // Кнопки статусов - ТОЛЬКО для редактора (isEditor)
+            const statusButtons = isEditor ? `
+                <button class="status-change-btn btn-approved" data-id="${event.id}" data-status="✅Одобрен">✅ Одобрен</button>
+                <button class="status-change-btn btn-soon" data-id="${event.id}" data-status="🟡Скоро">🟡 Скоро</button>
+                <button class="status-change-btn btn-completed" data-id="${event.id}" data-status="🔴Отказано">🔴 Отказано</button>
+            ` : '';
+            
+            // Кнопки редактирования/удаления - для создателя ИЛИ организатора ивента
+            const editButtons = canModify ? `
+                <button class="edit-event-btn" data-id="${event.id}" style="margin-top:5px;">Редактировать</button>
+                <button class="delete-event-btn" data-id="${event.id}" style="margin-top:5px;">Удалить</button>                           
+            ` : '';
+            
+            cell.innerHTML = statusButtons + editButtons;
+            
+            // ПРЯМЫЕ ОБРАБОТЧИКИ на кнопки (чтобы не было всплытия)
+            if (canModify) {
+                const editBtn = cell.querySelector('.edit-event-btn');
+                const deleteBtn = cell.querySelector('.delete-event-btn');
+                
+                if (editBtn) {
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        console.log('Редактирование ивента:', event.id);
+                        openEditEventModal(event.id);
+                    });
                 }
-            });
+                
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        console.log('Удаление ивента:', event.id);
+                        if (confirm('🗑️ Удалить ивент навсегда? Это действие нельзя отменить!')) {
+                            deleteEventHandler(event.id);
+                        }
+                    });
+                }
+            }
+            
+            if (isEditor) {
+                const statusBtns = cell.querySelectorAll('.status-change-btn');
+                statusBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const eventId = parseInt(btn.dataset.id);
+                        const newStatus = btn.dataset.status;
+                        changeEventStatus(eventId, newStatus);
+                    });
+                });
+            }
         }
-    }
-    
-    if (isEditor) {
-        const statusBtns = cell.querySelectorAll('.status-change-btn');
-        statusBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                const eventId = parseInt(btn.dataset.id);
-                const newStatus = btn.dataset.status;
-                changeEventStatus(eventId, newStatus);
-            });
-        });
-    }
-}
     });
     
     attachRowClicks();
@@ -1513,19 +1554,10 @@ function renderTeamTable() {
         }
         
         const cardClass = type === 'senior' ? 'senior' : 'junior';
-        const ratingValue = parseFloat(m.rating);
-        let starsHtml = '';
-
-        if (!isNaN(ratingValue)) {
-            const fullStars = Math.floor(ratingValue);
-            const hasHalf = ratingValue % 1 >= 0.5;
-            for(let i = 0; i < fullStars; i++) starsHtml += '<span class="rating-star">★</span>';
-            if(hasHalf) starsHtml += '<span class="rating-star">½</span>';
-            const empty = 5 - fullStars - (hasHalf ? 1 : 0);
-            for(let i = 0; i < empty; i++) starsHtml += '<span class="rating-star empty">☆</span>';
-        } else {
-            starsHtml = `<span class="rating-star">${m.rating}</span>`;
-        }
+        
+        // НОВЫЙ КОД - просто показываем ранг из таблицы
+        const rankText = m.rating || 'Нет ранга';
+        let rankHtml = `<span class="team-rank">${escapeHtml(rankText)}</span>`;
         
         const statusHtml = m.status === "Онлайн" ? '<span class="team-status online">🟢 Онлайн</span>' : '<span class="team-status offline">🔴 ' + m.status + '</span>';
         
@@ -1572,11 +1604,11 @@ function renderTeamTable() {
                     </div>
                 </div>
                 <div class="team-card-footer">
-                    <span class="team-badge ${type === 'senior' ? 'senior-badge' : 'junior-badge'}">
-                        ${type === 'senior' ? '👑' : '🌟'} ${type === 'senior' ? 'Старший' : 'Младший'} состав
-                    </span>
-                    <div class="team-rating">${starsHtml}</div>
-                </div>
+    <span class="team-badge ${type === 'senior' ? 'senior-badge' : 'junior-badge'}">
+        ${type === 'senior' ? '👑' : '🌟'} ${type === 'senior' ? 'Старший' : 'Младший'} состав
+    </span>
+    <div class="team-rating">${rankHtml}</div>  <!-- ← вместо starsHtml -->
+</div>
             </div>
         `;
     }
@@ -2402,24 +2434,22 @@ async function sendEventToDiscord() {
         const date = startTime + " - " + endTime;
         const rating = (prizes !== 'Не было' ? prizes.replace(/[^0-9]/g, '') : '0') + '$';
         
-        // 1. Сохраняем в Google Sheets
-const sheetResult = await addEventToSheet({
-    name: name,
-    platform: organizer,
-    organizer: organizer,        // ← ОРГАНИЗАТОР (кто проводит)
-    helpers: helpers,            // ← ПОМОЩНИКИ
-    date: date,
-    status: 'Проведен',
-    rating: rating,
-    members: members,
-    description: description
-});
+        const sheetResult = await addEventToSheet({
+            name: name,
+            organizer: organizer,
+            helpers: helpers,
+            date: date,
+            status: 'Проведен',
+            rating: rating,
+            members: members,
+            description: description
+        });
         
         if (!sheetResult.success) {
             throw new Error('Ошибка сохранения в таблицу');
         }
         
-        // 2. Отправляем в Discord через Cloudflare Worker (вебхук скрыт!)
+        // Отправка в Discord
         const discordResponse = await fetch(`${CLOUDFLARE_API}/api/send-event`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2434,24 +2464,18 @@ const sheetResult = await addEventToSheet({
             })
         });
         
-        const discordResult = await discordResponse.json();
-        
-        if (!discordResult.success) {
-            console.warn('Discord warning:', discordResult.error);
-        }
-        
-        showNotif('✅ Ивент добавлен!');
-        
         await sendAuditLog('ADD_EVENT', {
-    name: name,
-    organizer: organizer,
-    helpers: helpers,
-    date: date,
-    rating: rating,
-    members: members,
-    description: description
-});
+            name: name,
+            organizer: organizer,
+            helpers: helpers,
+            date: date,
+            rating: rating,
+            members: members,
+            description: description
+        });
 
+        showNotif('✅ Ивент добавлен! Ожидайте обновления...');
+        
         // Очищаем форму
         document.getElementById('eventName').value = '';
         document.getElementById('eventDescription').value = '';
@@ -2462,9 +2486,15 @@ const sheetResult = await addEventToSheet({
         document.getElementById('eventOrganizer').value = '';
         document.getElementById('eventHelpers').value = '';
         
-        // Обновляем таблицу
-        await refreshEventsData();
-        renderEventsTable();
+        // ВАЖНО: Ждём 2 секунды перед обновлением (Google Sheets нужно время)
+        showGlobalLoading();
+        
+        setTimeout(async () => {
+            await refreshEventsData();  // Полная перезагрузка
+            renderEventsTable();
+            hideGlobalLoading();
+            showNotif('✅ Таблица обновлена!');
+        }, 2000);
         
         // Активируем вкладку с таблицей
         document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -2473,6 +2503,7 @@ const sheetResult = await addEventToSheet({
     } catch (error) {
         console.error('Send event error:', error);
         showNotif('❌ Ошибка: ' + error.message, true);
+        hideGlobalLoading();
     } finally {
         sendBtn.disabled = false;
         sendBtn.textContent = '📤 Отправить в Discord';
@@ -2733,14 +2764,14 @@ const bg = document.getElementById('moving-bg');
 if (bg) {
     let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
     function smoothAnimate() {
-        currentX += (targetX - currentX) * 0.05;
-        currentY += (targetY - currentY) * 0.05;
+        currentX += (targetX - currentX) * 1.5;
+        currentY += (targetY - currentY) * 1.5;
         bg.style.transform = `translate(${currentX.toFixed(2)}px, ${currentY.toFixed(2)}px)`;
         requestAnimationFrame(smoothAnimate);
     }
     document.addEventListener('mousemove', (e) => {
-        targetX = (e.clientX / window.innerWidth - 0.5) * 15;
-        targetY = (e.clientY / window.innerHeight - 0.5) * 15;
+        targetX = (e.clientX / window.innerWidth - 0.5) * 25;
+        targetY = (e.clientY / window.innerHeight - 0.5) * 25;
     });
     smoothAnimate();
     }
@@ -2816,10 +2847,12 @@ function formatDate(dateString) {
 // Функция получения статистики пользователя (ИСПРАВЛЕННАЯ)
 function getUserStats() {
     const username = currentUser || sessionStorage.getItem('user') || 'Гость';
-    let userEvents = eventsData.filter(e => e.platform === username).length;
+    // ИСПРАВЛЕНО: ищем по event.organizer
+    let userEvents = eventsData.filter(e => e.organizer === username).length;
     let totalPrizes = 0;
     eventsData.forEach(e => {
-        if (e.platform === username) {
+        // ИСПРАВЛЕНО: ищем по event.organizer
+        if (e.organizer === username) {
             let clean = String(e.rating).replace(/[^0-9]/g, '');
             let num = parseInt(clean);
             if (!isNaN(num)) totalPrizes += num;
@@ -2830,7 +2863,6 @@ function getUserStats() {
     const userInfo = teamData.find(m => m.name === username);
     let joinDate = "14.03.26";
     if (userInfo && userInfo.joinDate) {
-        // ПРИМЕНЯЕМ ФОРМАТИРОВАНИЕ ДАТЫ ЗДЕСЬ!
         joinDate = formatDate(userInfo.joinDate);
     }
     
@@ -3128,6 +3160,7 @@ if (closeEditModalBtn) {
 
 // Сохранение
 const saveEditBtn = document.getElementById('saveEditEventBtn');
+// В обработчике saveEditBtn
 if (saveEditBtn) {
     saveEditBtn.addEventListener('click', async function() {
         const eventId = parseInt(document.getElementById('editEventId').value);
@@ -3139,31 +3172,77 @@ if (saveEditBtn) {
         const helpers = document.getElementById('editEventHelpers').value.trim();
         
         if (!name) {
-            showNotif('❌ Название обязательно!', true);
+            showNotif('❌ Название ивента обязательно!', true);
             return;
         }
         
-        this.disabled = true;
+        // Сохраняем старые данные для лога
+        const oldEvent = eventsData.find(e => e.id === eventId);
         
+        this.disabled = true;
+        this.textContent = '💾 Сохранение...';
+        
+        // Обновляем в Google Sheets
         const result = await updateEventInSheet({
             id: eventId,
-            name,
-            description,
-            date,
-            rating,
-            members,
-            helpers
+            name: name,
+            description: description,
+            date: date,
+            rating: rating,
+            members: members,
+            helpers: helpers
         });
         
         if (result.success) {
-            showNotif('✅ Ивент обновлён');
+            showNotif('✅ Ивент сохранён! Обновление через 2 секунды...');
             document.getElementById('editEventModal').style.display = 'none';
-            await refreshEventsData();
+            
+            // Отправляем лог
+            await sendAuditLog('EDIT_EVENT', 
+                { eventId: eventId, name: name },
+                { 
+                    name: oldEvent?.name,
+                    description: oldEvent?.fullDetails?.description,
+                    date: oldEvent?.date,
+                    rating: oldEvent?.rating,
+                    members: oldEvent?.members,
+                    helpers: oldEvent?.helpers
+                },
+                {
+                    name: name,
+                    description: description,
+                    date: date,
+                    rating: rating,
+                    members: members,
+                    helpers: helpers
+                }
+            );
+            
+            // ВАЖНО: Ждём 2 секунды перед обновлением
+            showGlobalLoading();
+            
+            setTimeout(async () => {
+                await refreshEventsData();  // Полная перезагрузка из Google Sheets
+                renderEventsTable();
+                hideGlobalLoading();
+                showNotif('✅ Таблица обновлена!');
+                
+                // Обновляем норму, если открыта
+                const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
+                if (activeTab === 'event_guidee') {
+                    document.querySelector('[data-tab="event_guidee"]').click();
+                }
+            }, 2000);
+            
         } else {
-            showNotif('❌ Ошибка обновления', true);
+            showNotif('❌ Ошибка обновления: ' + (result.error || 'неизвестная ошибка'), true);
+            this.disabled = false;
+            this.textContent = '💾 Сохранить';
+            hideGlobalLoading();
         }
         
         this.disabled = false;
+        this.textContent = '💾 Сохранить';
     });
 }
 
@@ -3171,6 +3250,70 @@ if (saveEditBtn) {
         if (e.key === 'Escape' && sweetEarnIsOpen) closeSweetEarn();
     });
 }
+
+// Функция для полной синхронизации ивентов
+async function forceSyncEvents() {
+    console.log('🔄 Принудительная синхронизация ивентов...');
+    showGlobalLoading();
+    
+    try {
+        // Очищаем кэш
+        for (let key in commentsCache) {
+            delete commentsCache[key];
+        }
+        
+        // Перезагружаем данные
+        await refreshEventsData();
+        await refreshTeamData();
+        
+        // Перерисовываем
+        renderEventsTable();
+        renderTeamTable();
+        
+        // Обновляем статистику
+        if (typeof updateStatsDisplay === 'function') {
+            updateStatsDisplay();
+        }
+        
+        showNotif('✅ Данные синхронизированы');
+    } catch (error) {
+        console.error('❌ Ошибка синхронизации:', error);
+        showNotif('❌ Ошибка синхронизации', true);
+    } finally {
+        hideGlobalLoading();
+    }
+}
+
+// Добавляем кнопку синхронизации в интерфейс
+function addSyncButtonToEvents() {
+    const pageHeader = document.querySelector('#eventDynamicContent .page-header');
+    if (pageHeader && !document.getElementById('forceSyncEventsBtn')) {
+        const syncBtn = document.createElement('button');
+        syncBtn.id = 'forceSyncEventsBtn';
+        syncBtn.innerHTML = 'Синхронизировать';
+        syncBtn.style.cssText = `
+            background: linear-gradient(95deg, rgba(85,85,85,0.5), rgba(51,51,51,0.5));
+            border: none;
+            border-radius: 40px;
+            padding: 0.5rem 1.2rem;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: auto;
+            transition: all 0.2s;
+        `;
+        syncBtn.addEventListener('click', forceSyncEvents);
+        pageHeader.appendChild(syncBtn);
+    }
+}
+
+// Вызываем после отрисовки таблицы
+const originalRenderEventsTable = renderEventsTable;
+renderEventsTable = function() {
+    originalRenderEventsTable();
+    addSyncButtonToEvents();
+};
 
 const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbypHeOJJsTeeYryopA4g1lrg_cUQa1FfkpKv5WzD_VWnU1toj-rz6YLIhz3CKEYUY0Pig/exec';
 
@@ -3438,9 +3581,19 @@ if (editEventModal) {
 }
 
 // Сохранение изменений
+// ========== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ИВЕНТА С АНИМАЦИЕЙ ==========
 const saveEditBtn = document.getElementById('saveEditEventBtn');
 if (saveEditBtn) {
-    saveEditBtn.addEventListener('click', async function() {
+    // Удаляем старые обработчики
+    const newSaveBtn = saveEditBtn.cloneNode(true);
+    saveEditBtn.parentNode.replaceChild(newSaveBtn, saveEditBtn);
+    
+    newSaveBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('🔵 Кнопка СОХРАНИТЬ нажата');
+        
         const eventId = parseInt(document.getElementById('editEventId').value);
         const name = document.getElementById('editEventName').value.trim();
         const description = document.getElementById('editEventDescription').value.trim();
@@ -3451,75 +3604,111 @@ if (saveEditBtn) {
         
         if (!name) {
             showNotif('❌ Название ивента обязательно!', true);
+            // Анимация ошибки на кнопке
+            this.classList.add('error');
+            setTimeout(() => this.classList.remove('error'), 500);
             return;
         }
         
-        // Внутри обработчика сохранения, до обновления:
-const oldEvent = eventsData.find(e => e.id === eventId);
-
-// После успешного обновления:
-await sendAuditLog('EDIT_EVENT', 
-    { eventId: eventId, name: name },
-    { 
-        name: oldEvent.name,
-        description: oldEvent.fullDetails?.description,
-        date: oldEvent.date,
-        rating: oldEvent.rating,
-        members: oldEvent.members,
-        helpers: oldEvent.helpers
-    },
-    {
-        name: name,
-        description: description,
-        date: date,
-        rating: rating,
-        members: members,
-        helpers: helpers
-    }
-);
-
-        // Блокируем кнопку
-        this.disabled = true;
+        // Сохраняем старые данные для лога
+        const oldEvent = eventsData.find(e => e.id === eventId);
+        
+        // Анимация загрузки на кнопке
+        this.classList.add('loading');
         this.textContent = '💾 Сохранение...';
         
-        // Обновляем в Google Sheets
-        const result = await updateEventInSheet({
-            id: eventId,
-            name: name,
-            description: description,
-            date: date,
-            rating: rating,
-            members: members,
-            helpers: helpers
-        });
+        // Показываем глобальный прогресс
+        const progressInterval = showProgress('Обновление данных в Google Sheets...');
         
-        if (result.success) {
-            showNotif('✅ Ивент сохранён! Обновление через 2 секунды...');
-            document.getElementById('editEventModal').style.display = 'none';
+        try {
+            // Обновляем в Google Sheets
+            const result = await updateEventInSheet({
+                id: eventId,
+                name: name,
+                description: description,
+                date: date,
+                rating: rating,
+                members: members,
+                helpers: helpers
+            });
             
-            // Показываем индикатор загрузки
-            showGlobalLoading();
+            console.log('📥 Результат сохранения:', result);
             
-            // ЖДЕМ 2 СЕКУНДЫ И ОБНОВЛЯЕМ
-            setTimeout(async () => {
-                await refreshEventsData();  // Загружаем свежие данные
-                renderEventsTable();        // Перерисовываем таблицу
-                hideGlobalLoading();        // Скрываем индикатор
-                showNotif('✅ Таблица обновлена!');
+            if (result && result.success) {
+                // Успех - анимация
+                this.classList.remove('loading');
+                this.classList.add('success');
+                this.textContent = '✅ Сохранено!';
+                
+                // Обновляем прогресс
+                const barFill = document.getElementById('progressBarFill');
+                if (barFill) barFill.style.width = '100%';
+                
+                // Закрываем модалку
+                document.getElementById('editEventModal').style.display = 'none';
+                
+                // Отправляем лог
+                if (oldEvent) {
+                    await sendAuditLog('EDIT_EVENT', 
+                        { eventId: eventId, name: name },
+                        { 
+                            name: oldEvent.name,
+                            description: oldEvent.fullDetails?.description,
+                            date: oldEvent.date,
+                            rating: oldEvent.rating,
+                            members: oldEvent.members,
+                            helpers: oldEvent.helpers
+                        },
+                        {
+                            name: name,
+                            description: description,
+                            date: date,
+                            rating: rating,
+                            members: members,
+                            helpers: helpers
+                        }
+                    );
+                }
+                
+                // Обновляем таблицу
+                setTimeout(async () => {
+                    await refreshEventsData();
+                    renderEventsTable();
+                    hideProgress(true, '✅ Ивент успешно сохранён!');
+                    
+                    // Обновляем норму, если открыта
+                    const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
+                    if (activeTab === 'event_guidee') {
+                        document.querySelector('[data-tab="event_guidee"]').click();
+                    }
+                    
+                    // Возвращаем кнопку в исходное состояние
+                    setTimeout(() => {
+                        this.classList.remove('success');
+                        this.textContent = '💾 Сохранить';
+                    }, 1500);
+                }, 1000);
+                
+            } else {
+                // Ошибка
+                throw new Error(result?.error || 'Неизвестная ошибка');
+            }
+            
+        } catch (error) {
+            console.error('❌ Ошибка:', error);
+            this.classList.remove('loading');
+            this.classList.add('error');
+            this.textContent = '❌ Ошибка!';
+            
+            hideProgress(false, `❌ Ошибка: ${error.message}`);
+            
+            setTimeout(() => {
+                this.classList.remove('error');
+                this.textContent = '💾 Сохранить';
             }, 2000);
-            
-        } else {
-            showNotif('❌ Ошибка обновления: ' + (result.error || 'неизвестная ошибка'), true);
-            this.disabled = false;
-            this.textContent = '💾 Сохранить';
+        } finally {
+            if (progressInterval) clearInterval(progressInterval);
         }
-        
-        // Разблокируем кнопку (только если не было ошибки, иначе уже разблокировали)
-        if (result.success) {
-            this.disabled = false;
-            this.textContent = '💾 Сохранить';
-        }
-
     });
 }
 
