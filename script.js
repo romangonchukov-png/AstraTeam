@@ -937,12 +937,13 @@ async function refreshEventsData() {
             status: e.status || 'Проведен',
             rating: e.rating || '0$',
             members: parseInt(e.members) || 0,
-            callStatus: currentStatuses[e.id] || '🟡Скоро', // 👈 ТОЛЬКО ЕСЛИ НЕТ СТАРОГО
+            callStatus: currentStatuses[e.id] || '🟡Скоро',
             fullDetails: { description: e.description || '' }
         }));
         
-        // ПРИМЕНЯЕМ СТАТУСЫ ИЗ ТАБЛИЦЫ СТАТУСОВ (ЭТО ПЕРЕЗАПИШЕТ callStatus)
-        await loadAndApplyStatuses();
+        // 👇👇👇 ВАЖНО: ОБНОВЛЯЕМ СТАТУСЫ ПОСЛЕ ЗАГРУЗКИ ИВЕНТОВ
+        await refreshStatusesFromSheet();  // Загружаем статусы из таблицы
+        await loadAndApplyStatuses();       // Применяем их к ивентам
         
         saveAllData();
         renderEventsTable();
