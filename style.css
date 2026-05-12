@@ -41,11 +41,11 @@ body{
   background:url('https://i.imgur.com/dhK7cCP.jpeg') center/cover no-repeat;
   z-index:-2;will-change:transform;
   transform:translate3d(0,0,0);backface-visibility:hidden;
-  filter:blur(8px) brightness(.55) saturate(0) grayscale(1);pointer-events:none
+  pointer-events:none
 }
 #bg-overlay{
   position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(135deg,rgba(0,0,0,.45),rgba(30,30,30,.35) 30%,rgba(20,20,20,.4) 60%,rgba(40,40,40,.3))
+
 }
 
 .dashboard,.welcome-container,.modal-overlay{position:relative;z-index:1}
@@ -2989,4 +2989,87 @@ footer {
         text-align: center;
         margin-left: 0;
     }
+}
+
+/* ПЕРЕЗАПИСЫВАЕМ ВСЕ РАЗМЫТИЯ */
+#moving-bg {
+  filter: blur(2px) !important;
+  -webkit-filter: blur(2px) !important;
+}
+
+#bg-overlay,
+.bg-overlay,
+.backdrop-blur,
+.glass-bg,
+.dashboard,
+.main-layout,
+.content-area,
+.table-wrapper,
+.sidebar,
+.top-bar,
+.user-actions,
+.notification-dropdown,
+.modal-card,
+.login-modal,
+.welcome-card,
+.settings-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body, .dashboard, .main-layout {
+  backdrop-filter: none !important;
+}
+
+/* Убираем blur со всех элементов */
+* {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ========== ЛЁГКИЙ БЛЮР ТОЛЬКО НА МОДАЛКАХ ========== */
+
+/* Все модальные окна */
+.modal {
+  backdrop-filter: blur(3px) !important;
+}
+
+.modal-card {
+  backdrop-filter: blur(5px) !important;
+  background: rgba(15, 15, 25, 0.9) !important;
+}
+
+/* Убираем блюр везде где не нужно */
+#moving-bg {
+  filter: blur(0px) !important;
+}
+
+.dashboard,
+.sidebar,
+.table-wrapper,
+.team-card,
+.addon-card,
+.top-bar,
+.user-actions {
+  backdrop-filter: none !important;
+}
+
+/* ========== НАСТРОЙКИ ПРОФИЛЯ - ЛЁГКИЙ БЛЮР ========== */
+
+/* Модальное окно настроек */
+.settings-modal {
+  backdrop-filter: blur(3px) !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.settings-card {
+  backdrop-filter: blur(5px) !important;
+  background: rgba(20, 20, 35, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Увеличиваем блюр на выбранном фоне */
+#moving-bg {
+  filter: blur(3px) !important;  /* Меняй цифру: 4px, 8px, 12px, 15px */
+  transform: scale(1.05);
 }
