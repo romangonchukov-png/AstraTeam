@@ -169,6 +169,36 @@
 
 <div class="dashboard" id="mainDashboard" style="display: none;">
 
+<div class="top-bar">
+    <div class="logo-area"></div>
+    <div class="user-actions">
+        <!-- КНОПКА УВЕДОМЛЕНИЙ С ВЫПАДАЮЩИМ МЕНЮ -->
+        <div class="notification-btn-wrapper">
+            <button class="notification-top-btn" id="notificationTopBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.93 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                </svg>
+                <span class="notification-badge" id="notificationBadge">0</span>
+            </button>
+            <div class="notification-dropdown" id="notificationDropdown">
+                <div class="notification-header">
+                    <span>📢 Уведомления</span>
+                    <button id="clearNotificationsBtn">Очистить все</button>
+                </div>
+                <div class="notification-list" id="notificationList">
+                    <div class="notification-empty">Нет уведомлений</div>
+                </div>
+            </div>
+        </div>
+        <!-- КНОПКА ВЫХОДА -->
+        <button class="logout-btn" id="logoutBtn">
+            <svg class="icon" style="fill:white;">
+                <use href="#ic-logout"/>
+            </svg>
+            Выйти
+        </button>
+    </div>
+</div>
     <div class="sidebar">
         <div class="sidebar-header">
             <img src="https://i.imgur.com/IAIJe65.png" alt="UnionTeam" class="sidebar-logo">
@@ -231,24 +261,7 @@
         </div>
     </div>
 
-    <div class="top-bar">
-        <div class="logo-area"></div>
-        <div class="user-actions">
-            <div style="font-size: 10px; opacity: 0.4; margin-left: 8px;">v4.6.1</div>
-            <div class="clock-wrapper">
-                <svg class="icon" style="fill:#ffd6aa; width:16px; height:16px;">
-                    <use href="#ic-clock"/>
-                </svg>
-                <span class="clock-badge" id="liveClockEvent">--:--:--</span>
-            </div>
-            <button class="logout-btn" id="logoutBtn">
-                <svg class="icon" style="fill:white;">
-                    <use href="#ic-logout"/>
-                </svg>
-                Выйти
-            </button>
-        </div>
-    </div>
+   
 
     <div class="main-layout">
         <div class="content-area" id="eventDynamicContent"></div>
@@ -325,7 +338,6 @@
                     </div>
                 </div>
             </div>
-            
             <div class="settings-section">
                 <div class="settings-section-title">ЯРКОСТЬ ЭКРАНА</div>
                 <div class="brightness-control">
@@ -335,6 +347,7 @@
                     <span id="brightnessValue" class="brightness-percent">100%</span>
                 </div>
             </div>
+            
             
             <div class="settings-section">
                 <div class="settings-section-title">🖼️ ВЫБОР ФОНА</div>
@@ -373,7 +386,9 @@
         </div>
     </div>
 </div>
+</div>
 
+           
 <template id="commentTemplate">
   <div class="comment-item">
     <img class="comment-avatar" src="" alt="avatar">
@@ -624,6 +639,11 @@
         </div>
     </div>
 </div>
+
+<!-- Панель глобальных уведомлений (ОДИН РАЗ) -->
+<div id="globalNotificationPanel" class="notification-panel-global"></div>
+<div id="notificationPanelTop" class="notification-panel-top"></div>
+
 <script src="script.js"></script>
 </body>
-</html>>>>
+</html>>
