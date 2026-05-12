@@ -6,13 +6,113 @@ let teamData = [
     { id: 1, name: "Ждите загрузки...", role: "Ивент-отдел UnionTeam", discord: "-", status: "Онлайн", eventsCount: "-", joinDate: "-", rating: "-", category: "Старший состав", fullDetails: { responsibilities: "Имеет полное владение над отделом Ивентологии, может самостоятельно изменять состав отдела Ивентологии и их норму/правила.", contacts: "https://admin.unionteams.ru/4/admin/76561198386405573", achievements: "0", notes: "" } },
 ];
 
+// ========== СИСТЕМА УВЕДОМЛЕНИЙ СВЕРХУ ==========
+let notifications = JSON.parse(localStorage.getItem('union_notifications')) || [];
+
+function saveNotificationsLocal() {
+    localStorage.setItem('union_notifications', JSON.stringify(notifications));
+}
+
+function updateNotificationPanel() {
+    const badge = document.getElementById('notificationBadge');
+    const list = document.getElementById('notificationList');
+    const unreadCount = notifications.filter(n => !n.read).length;
+    
+    if (badge) {
+        if (unreadCount === 0) {
+            badge.style.display = 'none';  
+            badge.textContent = '';
+        } else {
+            badge.style.display = 'flex';  
+            badge.textContent = unreadCount;
+        }
+    }
+    if (list) {
+        if (notifications.length === 0) {
+            list.innerHTML = '<div class="notification-empty">📭 Нет уведомлений</div>';
+        } else {
+            list.innerHTML = notifications.map(n => `
+                <div class="notification-item ${!n.read ? 'unread' : ''}" data-id="${n.id}">
+                    <div class="notification-title">${escapeHtml(n.title)}</div>
+                    <div class="notification-message">${escapeHtml(n.message)}</div>
+                    <div class="notification-time">${n.time}</div>
+                </div>
+            `).join('');
+            
+            document.querySelectorAll('.notification-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = parseInt(item.dataset.id);
+                    const notif = notifications.find(n => n.id === id);
+                    if (notif && !notif.read) {
+                        notif.read = true;
+                        saveNotificationsLocal();
+                        updateNotificationPanel();
+                    }
+                });
+            });
+        }
+    }
+}
+
+function addNotif(title, message) {
+    notifications.unshift({
+        id: Date.now(),
+        title: title,
+        message: message,
+        time: new Date().toLocaleTimeString('ru-RU'),
+        read: false
+    });
+    if (notifications.length > 50) notifications.pop();
+    saveNotificationsLocal();
+    updateNotificationPanel();
+}
+
+// Обработчики кнопок уведомлений
+const notifBtnTop = document.getElementById('notificationTopBtn');
+const dropdownPanel = document.getElementById('notificationDropdown');
+const clearBtnPanel = document.getElementById('clearNotificationsBtn');
+
+if (notifBtnTop) {
+    notifBtnTop.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (dropdownPanel) dropdownPanel.classList.toggle('show');
+    });
+}
+
+if (clearBtnPanel) {
+    clearBtnPanel.addEventListener('click', () => {
+        notifications = [];
+        saveNotificationsLocal();
+        updateNotificationPanel();
+
+    });
+}
+
+document.addEventListener('click', () => {
+    if (dropdownPanel) dropdownPanel.classList.remove('show');
+});
+
+if (dropdownPanel) dropdownPanel?.addEventListener('click', (e) => e.stopPropagation());
+
+updateNotificationPanel();
+
+
+// Переключить стиль кнопок
+function toggleButtonStyle() {
+    currentButtonStyle = currentButtonStyle === 'rounded' ? 'square' : 'rounded';
+    localStorage.setItem('buttonStyle', currentButtonStyle);
+    applyButtonStyleToAll();
+    showNotif(`Стиль кнопок изменён на ${currentButtonStyle === 'rounded' ? 'закруглённый' : 'прямоугольный'}`, false, 'success');
+}
+
+// Наблюдатель за изменениями DOM (для новых кнопок)
+const buttonStyleObserver = new MutationObserver(() => {
+    applyButtonStyleToAll();
+});
+buttonStyleObserver.observe(document.body, { childList: true, subtree: true });
 
 loadTeamFromLocalStorage();
-// ========== ПРОСТАЯ ЗАЩИТА (ТОЛЬКО ОЧИСТКА КОНСОЛИ) ==========
-// Очищаем консоль каждые 5 секунд
-setInterval(() => {
-    console.clear();
-}, 5000);
 
 // ========== ОБЫЧНЫЕ ПЕРЕМЕННЫЕ (БЕЗ ЗАЩИТЫ) ==========
 let currentUser = null;
@@ -22,6 +122,9 @@ let isEditor = false;
 
 const CLOUDFLARE_API = 'https://event-bot-api.roman-gonchukov.workers.dev';
 const COMMENTS_API_URL = 'https://script.google.com/macros/s/AKfycbyBXXBDtEM9cXJCmmxePbjqZFYi3zkkfsTByAyt5Nzl_wGJkpQyYH346NN7OG1EgYUW0A/exec';
+
+
+
 
 const avatarMap = {
     "Gl1tchFrost": "https://shared.fastly.steamstatic.com/community_assets/images/items/2861720/5ae020a665661d3e6499da7fb601f373fa998228.gif",
@@ -774,12 +877,21 @@ function loadEventsFromSheet() {
             document.body.removeChild(script);
             console.log('📊 Ивенты из таблицы:', data);
             
-            // Проверяем, что данные корректны
             if (Array.isArray(data)) {
-                resolve(data);
-            } else if (data && data.error) {
-                console.error('Ошибка загрузки:', data.error);
-                resolve([]);
+                // Убираем callStatus из данных, чтобы не перезаписывать
+                const cleanData = data.map(e => ({
+                    id: e.id,
+                    name: e.name,
+                    organizer: e.organizer,
+                    helpers: e.helpers,
+                    date: e.date,
+                    status: e.status,
+                    rating: e.rating,
+                    members: e.members,
+                    description: e.description
+                    // callStatus НЕ возвращаем!
+                }));
+                resolve(cleanData);
             } else {
                 resolve([]);
             }
@@ -793,7 +905,6 @@ function loadEventsFromSheet() {
             resolve([]);
         };
         
-        // Таймаут 10 секунд
         setTimeout(() => {
             if (window[callbackName]) {
                 console.warn('⚠️ Таймаут загрузки ивентов');
@@ -811,6 +922,12 @@ async function refreshEventsData() {
     console.log('📊 Загружено ивентов из таблицы:', events);
     
     if (events && events.length > 0) {
+        // СОХРАНЯЕМ ТЕКУЩИЕ СТАТУСЫ
+        const currentStatuses = {};
+        eventsData.forEach(e => {
+            currentStatuses[e.id] = e.callStatus;
+        });
+        
         eventsData = events.map(e => ({
             id: e.id,
             name: e.name || 'Без названия',
@@ -820,26 +937,23 @@ async function refreshEventsData() {
             status: e.status || 'Проведен',
             rating: e.rating || '0$',
             members: parseInt(e.members) || 0,
-            callStatus: e.callStatus || '🟡Скоро',
+            callStatus: currentStatuses[e.id] || '🟡Скоро', // 👈 ТОЛЬКО ЕСЛИ НЕТ СТАРОГО
             fullDetails: { description: e.description || '' }
         }));
         
-        // Сохраняем в localStorage
-        saveAllData();
+        // ПРИМЕНЯЕМ СТАТУСЫ ИЗ ТАБЛИЦЫ СТАТУСОВ (ЭТО ПЕРЕЗАПИШЕТ callStatus)
+        await loadAndApplyStatuses();
         
-        // Перерисовываем таблицу
+        saveAllData();
         renderEventsTable();
         
-        // Обновляем норму, если открыта
         const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
         if (activeTab === 'event_guidee') {
-            // Перезагружаем страницу нормы
-            document.querySelector('[data-tab="event_guidee"]').click();
+            document.querySelector('[data-tab="event_guidee"]')?.click();
         }
         
-        showNotif('📊 Ивенты обновлены');
+        showNotif('📊 Ивенты и статусы обновлены');
     } else {
-        console.log('Нет ивентов в таблице');
         eventsData = [];
         renderEventsTable();
     }
@@ -1082,7 +1196,7 @@ loadTeamFromLocalStorage();
 
 // ========== ФУНКЦИИ ДЛЯ РАБОТЫ С ТИКЕТАМИ ==========
 
-const TICKETS_API_URL = 'https://script.google.com/macros/s/AKfycbwlueUcV6HahGGG4TTNyhXi4_Rx_ArsHiUth6YNIziQg-2PGRm3is8I4nfNU0v0OFBo/exec';
+const TICKETS_API_URL = 'https://script.google.com/macros/s/AKfycbw9rkaeH7klWbWXgD26uIVLxRQt1dbWJ41mPtOikEyWjnL4hqSscMT4vL8kMNJoSvLBVw/exec';
 
 // Загрузка тикетов из Google Sheets
 function loadTicketsFromSheet() {
@@ -1298,6 +1412,7 @@ function calculateTotalPrizes() {
     return total;
 }
 
+
 function updateNormStats() {
     const totalPrizes = calculateTotalPrizes();
     const normContainer = document.getElementById('normStatsContainer');
@@ -1343,12 +1458,39 @@ const VALID_LOGINS = [
 ];
 
 
-function showNotif(msg, isErr = false) {
-    const d = document.createElement('div');
-    d.style.cssText = `position:fixed;bottom:20px;right:20px;background:${isErr ? '#c2410c' : '#2e7d32'};color:white;padding:12px 20px;border-radius:30px;z-index:9999;font-weight:bold;`;
-    d.innerHTML = msg;
-    document.body.appendChild(d);
-    setTimeout(() => d.remove(), 3000);
+// Глобальные уведомления (все уведомления идут сюда)
+function showNotif(msg, isErr = false, type = 'info') {
+    const panel = document.getElementById('globalNotificationPanel');
+    if (!panel) return;
+    
+    const notification = document.createElement('div');
+    notification.className = `notification-global ${isErr ? 'error' : type}`;
+    
+    let title = '';
+    if (isErr) title = '❌ Ошибка';
+    else if (type === 'success') title = '✅ Успех';
+    else if (type === 'warning') title = '⚠️ Внимание';
+    else title = 'ℹ️ Информация';
+    
+    notification.innerHTML = `
+        <div class="notification-global-title">${title}</div>
+        <div class="notification-global-message">${msg}</div>
+        <div class="notification-global-time">${new Date().toLocaleTimeString()}</div>
+    `;
+    
+    panel.appendChild(notification);
+    
+    // Автоматическое удаление через 4 секунды
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease forwards';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+    
+    // Клик для закрытия
+    notification.addEventListener('click', () => {
+        notification.style.animation = 'slideOutRight 0.3s ease forwards';
+        setTimeout(() => notification.remove(), 300);
+    });
 }
 
 (function() {
@@ -1701,12 +1843,35 @@ function renderTeamTable() {
     });
 }
 
-function showNotif(msg, isErr = false) {
-    const d = document.createElement('div');
-    d.style.cssText = `position:fixed;bottom:20px;right:20px;background:${isErr ? '#c2410c' : '#2e7d32'};color:white;padding:12px 20px;border-radius:30px;z-index:9999;font-weight:bold;`;
-    d.innerHTML = msg;
-    document.body.appendChild(d);
-    setTimeout(() => d.remove(), 3000);
+function showNotif(msg, isErr = false, type = 'info') {
+    const panel = document.getElementById('notificationPanelTop');
+    if (!panel) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `notification-toast ${isErr ? 'error' : type}`;
+    
+    let title = '';
+    if (isErr) title = '❌ Ошибка';
+    else if (type === 'success') title = '✅ Успех';
+    else if (type === 'warning') title = '⚠️ Внимание';
+    else title = 'ℹ️ Информация';
+    
+    toast.innerHTML = `
+        <div class="notification-toast-title">${title}</div>
+        <div class="notification-toast-message">${msg}</div>
+    `;
+    
+    panel.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+    
+    toast.addEventListener('click', () => {
+        toast.style.animation = 'slideOutRight 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    });
 }
 
 
@@ -2776,6 +2941,32 @@ if (bg) {
     smoothAnimate();
     }
 
+const toggleNavBtn = document.getElementById('toggleNavStyleBtn');
+if (toggleNavBtn) {
+    toggleNavBtn.addEventListener('click', toggleNavStyle);
+}
+// ========== ДВА ВИДА КНОПОК ДЛЯ САЙДБАРА ==========
+let currentNavStyle = localStorage.getItem('navStyle') || 'style1';
+
+function applyNavStyle() {
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.classList.remove('style-1', 'style-2');
+        item.classList.add(currentNavStyle);
+    });
+}
+
+function toggleNavStyle() {
+    currentNavStyle = currentNavStyle === 'style1' ? 'style2' : 'style1';
+    localStorage.setItem('navStyle', currentNavStyle);
+    applyNavStyle();
+    showNotificationGlobal('Стиль кнопок меню изменён', 'info');
+}
+
+
+
+// Применяем при загрузке
+applyNavStyle();
 function updateSidebarAvatar(username) {
     const avatarImg = document.querySelector('.sidebar-logo');
     if (!avatarImg) return;
@@ -3158,6 +3349,32 @@ if (closeEditModalBtn) {
     });
 }
 
+// ========== ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ СТАТУСОВ ==========
+
+// Функция для полного обновления статусов
+async function forceUpdateAllStatuses() {
+    console.log('🔄 Принудительное обновление статусов...');
+    await refreshStatusesFromSheet();
+    await loadAndApplyStatuses();
+    renderEventsTable();
+    console.log('✅ Статусы обновлены');
+}
+
+// Обновляем статусы при загрузке страницы
+window.addEventListener('load', async () => {
+    console.log('📢 Страница загружена, обновляем статусы...');
+    await forceUpdateAllStatuses();
+});
+
+// Обновляем статусы при каждом обновлении ивентов
+const originalRefreshEventsData = refreshEventsData;
+refreshEventsData = async function() {
+    console.log('📊 Обновление ивентов...');
+    await originalRefreshEventsData();
+    await forceUpdateAllStatuses();
+    console.log('✅ Ивенты и статусы обновлены');
+};
+
 // Сохранение
 const saveEditBtn = document.getElementById('saveEditEventBtn');
 // В обработчике saveEditBtn
@@ -3315,7 +3532,37 @@ renderEventsTable = function() {
     addSyncButtonToEvents();
 };
 
-const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbypHeOJJsTeeYryopA4g1lrg_cUQa1FfkpKv5WzD_VWnU1toj-rz6YLIhz3CKEYUY0Pig/exec';
+const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbysN7LWXHd_gzDQTVqmTrUUQy2u0qjAArPg6rORlFGNjEymH0eB-qSx2d3crBHp0HM5dg/exec';
+
+async function forceSyncAllStatuses() {
+    showGlobalLoading();
+    
+    for (const event of eventsData) {
+        // Получаем статус из отдельной таблицы
+        const statuses = await loadStatusesFromSheet();
+        const found = statuses.find(s => s['ID ивента'] == event.id);
+        
+        if (found && found['Статус']) {
+            let cleanStatus = found['Статус'];
+            if (cleanStatus === 'Одобрен') cleanStatus = '✅Одобрен';
+            else if (cleanStatus === 'Отказано') cleanStatus = '🔴Отказано';
+            else if (cleanStatus === 'Скоро') cleanStatus = '🟡Скоро';
+            
+            if (event.callStatus !== cleanStatus) {
+                event.callStatus = cleanStatus;
+                console.log(`Обновлён статус ивента ${event.id}: ${cleanStatus}`);
+            }
+        }
+    }
+    
+    saveAllData();
+    renderEventsTable();
+    hideGlobalLoading();
+    showNotif('✅ Статусы синхронизированы');
+}
+
+// Вызовите эту функцию для принудительной синхронизации
+forceSyncAllStatuses();
 
 function syncStatusToSheet(eventId, newStatus, userName) {
     return new Promise((resolve) => {
@@ -3348,6 +3595,221 @@ function syncStatusToSheet(eventId, newStatus, userName) {
     });
 }
 
+// ========== ПОИСКОВАЯ СИСТЕМА ДЛЯ ТАБЛИЦЫ ИВЕНТОВ ==========
+let currentSearchFilter = 'all'; // all, my, approved, rejected, pending
+let currentSearchQuery = '';
+
+// Функция для рендеринга таблицы с поиском
+function renderEventsTableWithSearch() {
+    const container = document.getElementById('eventDynamicContent');
+    const showActions = currentUser !== null;
+    const currentUsername = currentUser || sessionStorage.getItem('user');
+    
+    // Фильтруем ивенты
+    let filteredEvents = [...eventsData];
+    
+    // Фильтр по категории
+    switch(currentSearchFilter) {
+        case 'my':
+            filteredEvents = filteredEvents.filter(e => e.organizer === currentUsername);
+            break;
+        case 'approved':
+            filteredEvents = filteredEvents.filter(e => e.callStatus === '✅Одобрен');
+            break;
+        case 'rejected':
+            filteredEvents = filteredEvents.filter(e => e.callStatus === '🔴Отказано');
+            break;
+        case 'pending':
+            filteredEvents = filteredEvents.filter(e => e.callStatus === '🟡Скоро');
+            break;
+        default:
+            break;
+    }
+    
+    // Фильтр по поисковому запросу (по названию)
+    if (currentSearchQuery.trim()) {
+        const query = currentSearchQuery.trim().toLowerCase();
+        filteredEvents = filteredEvents.filter(e => 
+            e.name.toLowerCase().includes(query)
+        );
+    }
+    
+    const resultsCount = filteredEvents.length;
+    
+    container.innerHTML = `
+        <div class="page-header">
+            <h2>📅 Таблица мероприятий</h2>
+        </div>
+        
+        <!-- ПОИСКОВАЯ СИСТЕМА -->
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <input type="text" id="searchEventsInput" placeholder="🔍 Поиск по названию ивента..." value="${escapeHtml(currentSearchQuery)}">
+            </div>
+            <div class="search-filters">
+                <button class="search-filter-btn ${currentSearchFilter === 'all' ? 'active' : ''}" data-filter="all">📋 Все ивенты</button>
+                ${currentUser ? `<button class="search-filter-btn ${currentSearchFilter === 'my' ? 'active' : ''}" data-filter="my">👤 Мои ивенты</button>` : ''}
+                <button class="search-filter-btn ${currentSearchFilter === 'approved' ? 'active' : ''}" data-filter="approved">✅ Одобренные</button>
+                <button class="search-filter-btn ${currentSearchFilter === 'pending' ? 'active' : ''}" data-filter="pending">🟡 На ожидании</button>
+                <button class="search-filter-btn ${currentSearchFilter === 'rejected' ? 'active' : ''}" data-filter="rejected">🔴 Отказанные</button>
+            </div>
+            <div class="search-results-count" id="searchResultsCount">
+                📊 Найдено: ${resultsCount}
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ИВЕНТ</th>
+                        <th>ОРГАНИЗАТОР</th>
+                        <th>ПОМОЩНИКИ</th>
+                        <th>ДАТА</th>
+                        <th>СТАТУС</th>
+                        <th>ПРИЗОВЫЕ</th>
+                        <th>УЧАСТНИКИ</th>
+                        <th>ОДОБРЕН</th>
+                        ${showActions ? '<th>ДЕЙСТВИЯ</th>' : ''}
+                    </tr>
+                </thead>
+                <tbody id="eventsTableBody"></tbody>
+            </table>
+        </div>
+    `;
+    
+    const tbody = document.getElementById('eventsTableBody');
+    tbody.innerHTML = '';
+    
+    if (filteredEvents.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${showActions ? 9 : 8}" style="text-align:center; padding:40px;">🔍 Ничего не найдено</td></tr>`;
+    } else {
+        filteredEvents.forEach(event => {
+            const row = tbody.insertRow();
+            row.classList.add('clickable-row');
+            row.setAttribute('data-type', 'event');
+            row.setAttribute('data-id', event.id);
+            row.insertCell(0).innerHTML = `<strong>${escapeHtml(event.name)}</strong>`;
+            row.insertCell(1).textContent = event.organizer;
+            row.insertCell(2).textContent = event.helpers;
+            row.insertCell(3).textContent = event.date;
+            row.insertCell(4).innerHTML = `<span class="status-badge status-active">${event.status}</span>`;
+            row.insertCell(5).innerHTML = `<span class="rating-star">${event.rating}</span>`;
+            row.insertCell(6).innerHTML = `<span style="font-weight:600;">${event.members}</span>`;
+            row.insertCell(7).innerHTML = `<span style="background:var(--badge-bg); padding:0.2rem 0.6rem; border-radius:20px;">${event.callStatus}</span>`;
+            
+            if (showActions) {
+                const cell = row.insertCell(8);
+                const canModify = isEditor || (currentUser && currentUser === event.organizer);
+                
+                const statusButtons = isEditor ? `
+                    <button class="status-change-btn btn-approved" data-id="${event.id}" data-status="✅Одобрен">✅ Одобрен</button>
+                    <button class="status-change-btn btn-soon" data-id="${event.id}" data-status="🟡Скоро">🟡 Скоро</button>
+                    <button class="status-change-btn btn-completed" data-id="${event.id}" data-status="🔴Отказано">🔴 Отказано</button>
+                ` : '';
+                
+                const editButtons = canModify ? `
+                    <button class="edit-event-btn" data-id="${event.id}" style="margin-top:5px;">Редактировать</button>
+                    <button class="delete-event-btn" data-id="${event.id}" style="margin-top:5px;">Удалить</button>
+                ` : '';
+                
+                cell.innerHTML = statusButtons + editButtons;
+                
+                if (canModify) {
+                    const editBtn = cell.querySelector('.edit-event-btn');
+                    const deleteBtn = cell.querySelector('.delete-event-btn');
+                    
+                    if (editBtn) {
+                        editBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openEditEventModal(event.id);
+                        });
+                    }
+                    
+                    if (deleteBtn) {
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (confirm('🗑️ Удалить ивент навсегда?')) {
+                                deleteEventHandler(event.id);
+                            }
+                        });
+                    }
+                }
+                
+                if (isEditor) {
+                    cell.querySelectorAll('.status-change-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            changeEventStatus(parseInt(btn.dataset.id), btn.dataset.status);
+                        });
+                    });
+                }
+            }
+        });
+    }
+    
+    attachRowClicks();
+    
+    // Навешиваем обработчики поиска
+    const searchInput = document.getElementById('searchEventsInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            currentSearchQuery = e.target.value;
+            renderEventsTableWithSearch();
+        });
+    }
+    
+    document.querySelectorAll('.search-filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            currentSearchFilter = btn.dataset.filter;
+            renderEventsTableWithSearch();
+        });
+    });
+}
+
+// Переопределяем renderEventsTable на новую версию с поиском
+const originalRender = renderEventsTable;
+renderEventsTable = function() {
+    renderEventsTableWithSearch();
+};
+
+// Также обновляем refreshEventsData чтобы сохранить поиск
+const originalRefresh = refreshEventsData;
+refreshEventsData = async function() {
+    const events = await loadEventsFromSheet();
+    if (events && events.length > 0) {
+        eventsData = events.map(e => ({
+            id: e.id,
+            name: e.name || 'Без названия',
+            organizer: e.organizer || 'Неизвестно',
+            helpers: e.helpers || 'Нет',
+            date: e.date || 'Дата не указана',
+            status: e.status || 'Проведен',
+            rating: e.rating || '0$',
+            members: parseInt(e.members) || 0,
+            callStatus: e.callStatus || '🟡Скоро',
+            fullDetails: { description: e.description || '' }
+        }));
+        saveAllData();
+        renderEventsTableWithSearch(); // Используем новую версию
+        const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
+        if (activeTab === 'event_guidee') {
+            document.querySelector('[data-tab="event_guidee"]')?.click();
+        }
+        showNotif('📊 Ивенты обновлены');
+    } else {
+        eventsData = [];
+        renderEventsTableWithSearch();
+    }
+};
+
+// Применяем при загрузке
+setTimeout(() => {
+    if (document.querySelector('[data-tab="events_table"]')?.classList.contains('active')) {
+        renderEventsTableWithSearch();
+    }
+}, 100);
+
 function loadStatusesFromSheet() {
     return new Promise((resolve) => {
         const callbackName = 'jsonp_status_load_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
@@ -3356,13 +3818,19 @@ function loadStatusesFromSheet() {
         window[callbackName] = (data) => {
             delete window[callbackName];
             document.body.removeChild(script);
-            resolve(Array.isArray(data) ? data : []);
+            console.log('📥 Сырые данные из таблицы статусов:', data);
+            
+            // data приходит как массив объектов
+            // Ожидаемая структура: [{ "ID ивента": 1, "Статус": "✅Одобрен", ... }]
+            const result = Array.isArray(data) ? data : [];
+            resolve(result);
         };
         
         script.src = `${GOOGLE_SHEETS_URL}?callback=${callbackName}`;
         script.onerror = () => {
             delete window[callbackName];
             document.body.removeChild(script);
+            console.error('❌ Ошибка загрузки статусов');
             resolve([]);
         };
         document.body.appendChild(script);
@@ -3371,36 +3839,48 @@ function loadStatusesFromSheet() {
 
 async function loadAndApplyStatuses() {
     const statuses = await loadStatusesFromSheet();
-    console.log('Загруженные статусы из таблицы:', statuses);
+    console.log('📊 Загруженные статусы из таблицы:', statuses);
     
     if (statuses && statuses.length > 0) {
+        let updated = 0;
+        
         statuses.forEach(item => {
             const eventId = parseInt(item['ID ивента']);
-            const statusFromSheet = item['Статус'];
+            let statusFromSheet = item['Статус'];
             
-            // Находим ивент в eventsData
-            const event = eventsData.find(e => e.id === eventId);
-            if (event && statusFromSheet) {
-                // Сохраняем статус как есть (с эмодзи)
-                let cleanStatus = statusFromSheet;
-                if (statusFromSheet === 'Одобрен') cleanStatus = '✅Одобрен';
-                else if (statusFromSheet === 'Отказано') cleanStatus = '🔴Отказано';
-                else if (statusFromSheet === 'Скоро') cleanStatus = '🟡Скоро';
-                
-                event.callStatus = cleanStatus;
-                console.log(`Применён статус для ивента ${eventId}: ${cleanStatus}`);
+            if (eventId && statusFromSheet) {
+                const event = eventsData.find(e => e.id === eventId);
+                if (event) {
+                    // ПРЯМО СТАВИМ ТО, ЧТО В ТАБЛИЦЕ
+                    event.callStatus = statusFromSheet;
+                    updated++;
+                    console.log(`✅ Ивент ${eventId} (${event.name}): статус = ${statusFromSheet}`);
+                } else {
+                    console.log(`⚠️ Ивент с ID ${eventId} не найден`);
+                }
             }
         });
-        saveAllData();
-        renderEventsTable();
+        
+        if (updated > 0) {
+            saveAllData();
+            renderEventsTable();
+            showNotif(`✅ Обновлено ${updated} статусов`);
+        } else {
+            console.log('⚠️ Статусы не изменились');
+        }
+    } else {
+        console.log('⚠️ Нет данных из таблицы статусов');
     }
 }
+
 
 async function initStatuses() {
     await loadAndApplyStatuses();
     renderEventsTable();
     console.log('Статусы загружены из Google Sheets');
 }
+
+
 
 initStatuses();
 
@@ -3413,33 +3893,38 @@ function refreshStatusesFromSheet() {
             delete window[callbackName];
             document.body.removeChild(script);
             
-            console.log('Получены данные из таблицы статусов:', data);
+            console.log('📊 Получены статусы из таблицы:', data);
             
             let updated = false;
-            if (Array.isArray(data)) {
+            if (Array.isArray(data) && data.length > 0) {
                 for (const item of data) {
-                    // ПРАВИЛЬНЫЕ КЛЮЧИ!
                     const eventId = parseInt(item['ID ивента']);
-                    const newStatus = item['Статус'];
+                    let newStatus = item['Статус'];
                     
+                    // Нормализация статуса
                     let cleanStatus = newStatus;
-                    if (newStatus && newStatus.includes('✅')) cleanStatus = '✅Одобрен';
-                    else if (newStatus && newStatus.includes('🔴')) cleanStatus = '🔴Отказано';
-                    else if (newStatus && newStatus.includes('🟡')) cleanStatus = '🟡Скоро';
+                    if (newStatus === 'Одобрен' || newStatus === '✅Одобрен') cleanStatus = '✅Одобрен';
+                    else if (newStatus === 'Отказано' || newStatus === '🔴Отказано') cleanStatus = '🔴Отказано';
+                    else if (newStatus === 'Скоро' || newStatus === '🟡Скоро') cleanStatus = '🟡Скоро';
+                    else cleanStatus = '🟡Скоро';
                     
                     const event = eventsData.find(e => e.id === eventId);
                     if (event && event.callStatus !== cleanStatus) {
                         event.callStatus = cleanStatus;
                         updated = true;
-                        console.log(`Обновлён статус ивента ${eventId}: ${cleanStatus}`);
+                        console.log(`✅ Обновлён статус ивента ${eventId}: ${event.name} → ${cleanStatus}`);
                     }
                 }
             }
             
             if (updated) {
                 saveAllData();
+                renderEventsTable(); // Перерисовываем таблицу
+                showNotif('📊 Статусы обновлены из таблицы');
+            } else {
+                console.log('⚠️ Статусы не изменились или таблица пуста');
+                // Принудительно показываем текущие статусы
                 renderEventsTable();
-                showNotif('📊 Статусы обновлены');
             }
             
             resolve(data);
@@ -3449,11 +3934,38 @@ function refreshStatusesFromSheet() {
         script.onerror = () => {
             delete window[callbackName];
             document.body.removeChild(script);
+            console.error('❌ Ошибка загрузки статусов');
             resolve([]);
         };
         document.body.appendChild(script);
     });
 }
+
+// Проверка текущих статусов
+function checkEventStatuses() {
+    console.log('=== ТЕКУЩИЕ СТАТУСЫ ИВЕНТОВ ===');
+    eventsData.forEach(event => {
+        console.log(`ID: ${event.id}, Название: ${event.name}, Статус: ${event.callStatus}`);
+    });
+    
+    // Также показываем в уведомлении
+    const statusCount = {
+        '✅Одобрен': 0,
+        '🟡Скоро': 0,
+        '🔴Отказано': 0
+    };
+    eventsData.forEach(e => {
+        if (statusCount[e.callStatus] !== undefined) statusCount[e.callStatus]++;
+        else statusCount['🟡Скоро']++;
+    });
+    
+    showNotif(`📊 Статистика: Одобрено: ${statusCount['✅Одобрен']}, Ожидают: ${statusCount['🟡Скоро']}, Отказано: ${statusCount['🔴Отказано']}`);
+    
+    return statusCount;
+}
+
+// Вызовите в консоли для проверки:
+// checkEventStatuses()
 
 showImportButton();
 initImportButton();
@@ -3491,6 +4003,8 @@ function openEditEventModal(eventId) {
     // Показываем модалку
     modal.style.display = 'flex';
 }
+
+
 
 async function deleteEventHandler(eventId) {
     if (!confirm('🗑️ Удалить ивент навсегда? Это действие нельзя отменить!')) {
@@ -3580,8 +4094,7 @@ if (editEventModal) {
     });
 }
 
-// Сохранение изменений
-// ========== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ИВЕНТА С АНИМАЦИЕЙ ==========
+// Сохранение изменений ивента
 const saveEditBtn = document.getElementById('saveEditEventBtn');
 if (saveEditBtn) {
     // Удаляем старые обработчики
@@ -3604,21 +4117,18 @@ if (saveEditBtn) {
         
         if (!name) {
             showNotif('❌ Название ивента обязательно!', true);
-            // Анимация ошибки на кнопке
             this.classList.add('error');
             setTimeout(() => this.classList.remove('error'), 500);
             return;
         }
         
-        // Сохраняем старые данные для лога
+        // Сохраняем старые данные
         const oldEvent = eventsData.find(e => e.id === eventId);
+        const oldStatus = oldEvent ? oldEvent.callStatus : null;
         
-        // Анимация загрузки на кнопке
-        this.classList.add('loading');
+        this.disabled = true;
         this.textContent = '💾 Сохранение...';
-        
-        // Показываем глобальный прогресс
-        const progressInterval = showProgress('Обновление данных в Google Sheets...');
+        this.classList.add('loading');
         
         try {
             // Обновляем в Google Sheets
@@ -3635,16 +4145,26 @@ if (saveEditBtn) {
             console.log('📥 Результат сохранения:', result);
             
             if (result && result.success) {
-                // Успех - анимация
+                // Обновляем локальные данные БЕЗ СБРОСА СТАТУСА
+                const eventIndex = eventsData.findIndex(e => e.id === eventId);
+                if (eventIndex !== -1) {
+                    eventsData[eventIndex] = {
+                        ...eventsData[eventIndex],
+                        name: name,
+                        organizer: eventsData[eventIndex].organizer,
+                        helpers: helpers,
+                        date: date,
+                        rating: rating,
+                        members: parseInt(members) || 0,
+                        fullDetails: { ...eventsData[eventIndex].fullDetails, description: description }
+                    };
+                    // ВАЖНО: НЕ ТРОГАЕМ callStatus!
+                }
+                
                 this.classList.remove('loading');
                 this.classList.add('success');
                 this.textContent = '✅ Сохранено!';
                 
-                // Обновляем прогресс
-                const barFill = document.getElementById('progressBarFill');
-                if (barFill) barFill.style.width = '100%';
-                
-                // Закрываем модалку
                 document.getElementById('editEventModal').style.display = 'none';
                 
                 // Отправляем лог
@@ -3670,27 +4190,22 @@ if (saveEditBtn) {
                     );
                 }
                 
-                // Обновляем таблицу
-                setTimeout(async () => {
-                    await refreshEventsData();
-                    renderEventsTable();
-                    hideProgress(true, '✅ Ивент успешно сохранён!');
-                    
-                    // Обновляем норму, если открыта
-                    const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
-                    if (activeTab === 'event_guidee') {
-                        document.querySelector('[data-tab="event_guidee"]').click();
-                    }
-                    
-                    // Возвращаем кнопку в исходное состояние
-                    setTimeout(() => {
-                        this.classList.remove('success');
-                        this.textContent = '💾 Сохранить';
-                    }, 1500);
-                }, 1000);
+                // Просто перерисовываем таблицу, НЕ перезагружаем данные
+                renderEventsTable();
+                showNotif(`✅ Ивент "${name}" успешно сохранён!`);
+                
+                // Обновляем норму, если открыта
+                const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
+                if (activeTab === 'event_guidee') {
+                    document.querySelector('[data-tab="event_guidee"]')?.click();
+                }
+                
+                setTimeout(() => {
+                    this.classList.remove('success');
+                    this.textContent = '💾 Сохранить';
+                }, 1500);
                 
             } else {
-                // Ошибка
                 throw new Error(result?.error || 'Неизвестная ошибка');
             }
             
@@ -3699,20 +4214,227 @@ if (saveEditBtn) {
             this.classList.remove('loading');
             this.classList.add('error');
             this.textContent = '❌ Ошибка!';
-            
-            hideProgress(false, `❌ Ошибка: ${error.message}`);
+            showNotif(`❌ Ошибка сохранения: ${error.message}`, true);
             
             setTimeout(() => {
                 this.classList.remove('error');
                 this.textContent = '💾 Сохранить';
             }, 2000);
         } finally {
-            if (progressInterval) clearInterval(progressInterval);
+            this.disabled = false;
         }
     });
 }
 
+// ========== ПЕРЕХВАТ ДЕЙСТВИЙ ДЛЯ УВЕДОМЛЕНИЙ ==========
+setTimeout(() => {
+    // Изменение статуса
+    const originalChange = changeEventStatus;
+    if (originalChange) {
+        window.changeEventStatus = function(eventId, newStatus) {
+            const event = eventsData?.find(e => e.id === eventId);
+            if (event) addNotif('🔄 Статус ивента', `"${event.name}" → ${newStatus}`);
+            return originalChange(eventId, newStatus);
+        };
+    }
+    
+    // Удаление ивента
+    const originalDelete = deleteEventHandler;
+    if (originalDelete) {
+        window.deleteEventHandler = async function(eventId) {
+            const event = eventsData?.find(e => e.id === eventId);
+            if (event) addNotif('🗑️ Удаление ивента', `"${event.name}" удалён`);
+            return originalDelete(eventId);
+        };
+    }
+    
+    // Добавление комментария
+    const originalAddComm = addComment;
+    if (originalAddComm) {
+        window.addComment = async function(eventId, userName, text) {
+            addNotif('💬 Новый комментарий', `${userName}: "${text.substring(0, 40)}${text.length > 40 ? '...' : ''}"`);
+            return originalAddComm(eventId, userName, text);
+        };
+    }
+    
+    // Смена фона
+    const bgOpts = document.querySelectorAll('.bg-option');
+    bgOpts.forEach(opt => {
+        opt.addEventListener('click', () => {
+            const bgName = opt.querySelector('span')?.textContent || 'новый фон';
+            addNotif('🖼️ Смена фона', `Выбран фон: "${bgName}"`);
+        });
+    });
+    
+    // Сохранение настроек
+    const settingsBtn = document.getElementById('saveSettingsBtn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            const brightness = document.getElementById('brightnessSlider')?.value;
+            addNotif('⚙️ Настройки', `Сохранены (яркость: ${brightness}%)`);
+        });
+    }
+    
+    console.log('✅ Все действия подключены к уведомлениям!');
+}, 1000);
 
+// ========== СТИЛИ КНОПОК (2 ВИДА, НЕ ЦВЕТА!) ==========
+
+// Вид 1: Закруглённые мягкие кнопки
+const buttonStyle1 = `
+    .action-btn {
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 40px;
+        padding: 8px 18px;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        font-size: 0.8rem;
+        backdrop-filter: blur(8px);
+    }
+    .action-btn:hover {
+        background: rgba(255,255,255,0.18);
+        transform: translateY(-2px);
+        border-color: rgba(255,255,255,0.3);
+    }
+    .action-btn:active {
+        transform: translateY(0);
+    }
+    .action-btn-primary {
+        background: linear-gradient(135deg, rgba(108,92,231,0.3), rgba(168,85,247,0.3));
+        border-color: rgba(168,85,247,0.5);
+    }
+    .action-btn-primary:hover {
+        background: linear-gradient(135deg, rgba(108,92,231,0.5), rgba(168,85,247,0.5));
+    }
+    .action-btn-danger {
+        background: linear-gradient(135deg, rgba(244,67,54,0.2), rgba(211,47,47,0.2));
+        border-color: rgba(244,67,54,0.4);
+    }
+    .action-btn-danger:hover {
+        background: linear-gradient(135deg, rgba(244,67,54,0.35), rgba(211,47,47,0.35));
+    }
+`;
+
+// Вид 2: Прямоугольные строгие кнопки
+const buttonStyle2 = `
+    .action-btn {
+        background: rgba(0,0,0,0.4);
+        border: none;
+        border-radius: 8px;
+        padding: 8px 18px;
+        color: #ddd;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .action-btn:hover {
+        background: rgba(0,0,0,0.6);
+        color: white;
+        transform: scale(0.98);
+    }
+    .action-btn-primary {
+        background: #2c3e50;
+        color: white;
+    }
+    .action-btn-primary:hover {
+        background: #1a252f;
+    }
+    .action-btn-danger {
+        background: #c0392b;
+        color: white;
+    }
+    .action-btn-danger:hover {
+        background: #a93226;
+    }
+`;
+
+let currentButtonStyle = localStorage.getItem('buttonDesign') || 'style1';
+
+// Применить стиль ко всем кнопкам
+function applyGlobalButtonStyle() {
+    const styleId = 'globalButtonStyle';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = currentButtonStyle === 'style1' ? buttonStyle1 : buttonStyle2;
+}
+
+// Переключить стиль
+function switchButtonStyle() {
+    currentButtonStyle = currentButtonStyle === 'style1' ? 'style2' : 'style1';
+    localStorage.setItem('buttonDesign', currentButtonStyle);
+    applyGlobalButtonStyle();
+    addNotification('Стиль кнопок', `Выбран ${currentButtonStyle === 'style1' ? 'мягкий закруглённый' : 'строгий прямоугольный'} стиль`, 'info');
+}
+
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+document.addEventListener('DOMContentLoaded', () => {
+    loadNotifications();
+    applyGlobalButtonStyle();
+    
+    // Кнопка уведомлений
+    const notifBtn = document.getElementById('notificationTopBtn');
+    const dropdown = document.getElementById('notificationDropdown');
+    const clearBtn = document.getElementById('clearNotificationsBtn');
+    
+    if (notifBtn) {
+        notifBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            clearAllNotifications();
+            addNotification('Уведомления', 'Все уведомления очищены', 'info');
+        });
+    }
+    
+    // Закрытие при клике вне
+    document.addEventListener('click', () => {
+        if (dropdown) dropdown.classList.remove('show');
+    });
+    
+    if (dropdown) {
+        dropdown.addEventListener('click', (e) => e.stopPropagation());
+    }
+    
+    // Добавляем уведомление при входе в систему
+    const originalDoLogin = doLogin;
+    window.doLogin = async function() {
+        const result = await originalDoLogin();
+        if (currentUser) {
+            addNotification('Вход в систему', `Пользователь ${currentUser} вошёл в панель управления`, 'success');
+        }
+        return result;
+    };
+});
+
+const switchBtn = document.getElementById('switchButtonStyleBtn');
+if (switchBtn) {
+    switchBtn.addEventListener('click', switchButtonStyle);
+    const styleText = document.getElementById('currentStyleText');
+    if (styleText) {
+        styleText.textContent = currentButtonStyle === 'style1' ? 'мягкий закруглённый' : 'строгий прямоугольный';
+    }
+}
+
+// Добавляем уведомление при логауте
+const originalLogout = logout;
+window.logout = function() {
+    addNotification('Выход из системы', `Пользователь ${currentUser} вышел из панели`, 'info');
+    originalLogout();
+};
 
 (function() {
     const canvas = document.getElementById('particleCanvas');
@@ -4150,6 +4872,8 @@ function deleteMemberFromSheet(memberId, memberName) {
         document.body.appendChild(script);
     });
 }
+
+
 
 // ========== МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ УЧАСТНИКА ==========
 const editTeamMemberModal = document.getElementById('editTeamMemberModal');
