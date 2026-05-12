@@ -4227,6 +4227,35 @@ if (saveEditBtn) {
     });
 }
 
+// ========== УВЕДОМЛЕНИЕ ПРИ ВХОДЕ ==========
+
+// Функция для показа уведомления о настройках
+function showSettingsNotification() {
+    setTimeout(() => {
+        addNotif(
+            '⚙️ Настройки профиля', 
+            'Вы можете изменить задний фон или яркость, нажав сверху слева на аватарку'
+        );
+    }, 1500); // Показываем через 1.5 секунды после входа
+}
+
+// Перехватываем вход в систему
+const originalDoLogin = doLogin;
+if (originalDoLogin) {
+    window.doLogin = async function() {
+        const result = await originalDoLogin();
+        if (result !== false && currentUser) {
+            showSettingsNotification();
+        }
+        return result;
+    };
+}
+
+// Также проверяем при загрузке страницы если пользователь уже вошёл
+if (currentUser) {
+    showSettingsNotification();
+}
+
 // ========== ПЕРЕХВАТ ДЕЙСТВИЙ ДЛЯ УВЕДОМЛЕНИЙ ==========
 setTimeout(() => {
     // Изменение статуса
@@ -4377,6 +4406,8 @@ function switchButtonStyle() {
     addNotification('Стиль кнопок', `Выбран ${currentButtonStyle === 'style1' ? 'мягкий закруглённый' : 'строгий прямоугольный'} стиль`, 'info');
 }
 
+
+
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 document.addEventListener('DOMContentLoaded', () => {
     loadNotifications();
@@ -4420,6 +4451,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     };
 });
+
+
 
 const switchBtn = document.getElementById('switchButtonStyleBtn');
 if (switchBtn) {
