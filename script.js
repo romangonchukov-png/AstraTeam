@@ -1390,15 +1390,35 @@ async function renderTicketsEditor() {
 
 function countEventsByPlatform() {
     const counts = {};
+    
+    // Создаём карту соответствия имён (на случай если имена в ивентах и команде отличаются)
+    const teamNames = teamData.map(m => m.name);
+    
     for (let event of eventsData) {
-        const platform = event.platform;
-        if (platform && platform !== "Нет" && platform !== "") {
-            counts[platform] = (counts[platform] || 0) + 1;
+        let organizer = event.organizer;
+        
+        // Пропускаем пустые/дефисные значения
+        if (!organizer || organizer === "-" || organizer === "Нет" || organizer === "Неизвестно") {
+            continue;
+        }
+        
+        // Ищем точное совпадение с именем из команды
+        const exactMatch = teamNames.find(name => name === organizer);
+        if (exactMatch) {
+            counts[organizer] = (counts[organizer] || 0) + 1;
+        } else {
+            // Если точного совпадения нет, пробуем частичное (убираем пробелы и приводим к нижнему регистру)
+            const normalizedOrganizer = organizer.toLowerCase().trim();
+            const found = teamNames.find(name => name.toLowerCase().trim() === normalizedOrganizer);
+            if (found) {
+                counts[found] = (counts[found] || 0) + 1;
+            }
         }
     }
+    
+    console.log('📊 Подсчёт ивентов по организаторам:', counts);
     return counts;
 }
-
 function calculateTotalPrizes() {
     let total = 0;
     for (let event of eventsData) {
@@ -1680,8 +1700,6 @@ function renderEventsTable() {
     attachRowClicks();
 }
 
-
-
 function renderTeamTable() {
     const container = document.getElementById('eventDynamicContent');
     const eventCounts = countEventsByPlatform();
@@ -1698,15 +1716,12 @@ function renderTeamTable() {
         
         const cardClass = type === 'senior' ? 'senior' : 'junior';
         
-        // НОВЫЙ КОД - просто показываем ранг из таблицы
+        // ПРОСТО ПОКАЗЫВАЕМ РАНГ КАК ТЕКСТ ИЗ ТАБЛИЦЫ
         const rankText = m.rating || 'Нет ранга';
-        let rankHtml = `<span class="team-rank">${escapeHtml(rankText)}</span>`;
         
         const statusHtml = m.status === "Онлайн" ? '<span class="team-status online">🟢 Онлайн</span>' : '<span class="team-status offline">🔴 ' + m.status + '</span>';
         
-        // Используем глобальный объект avatarMap
         const avatarUrl = avatarMap[m.name] || "https://i.imgur.com/IAIJe65.png";
-        
         const formattedJoinDate = formatDate(m.joinDate);
         
         const editButton = isEditor ? `
@@ -1750,7 +1765,7 @@ function renderTeamTable() {
     <span class="team-badge ${type === 'senior' ? 'senior-badge' : 'junior-badge'}">
         ${type === 'senior' ? '👑' : '🌟'} ${type === 'senior' ? 'Старший' : 'Младший'} состав
     </span>
-    <div class="team-rating">${rankHtml}</div>  <!-- ← вместо starsHtml -->
+    <!-- УБИРАЕМ team-rating ПОЛНОСТЬЮ -->
 </div>
             </div>
         `;
@@ -1794,7 +1809,7 @@ function renderTeamTable() {
         </div>
     `;
 
-    // Добавляем обработчик для кнопки управления командой (добавление)
+    // Добавляем обработчик для кнопки управления командой
     const manageBtn = document.getElementById('manageTeamFromTableBtn');
     if (manageBtn) {
         manageBtn.addEventListener('click', () => {
@@ -1819,20 +1834,14 @@ function renderTeamTable() {
             const memberId = parseInt(btn.dataset.id);
             if (typeof openEditMemberModal === 'function') {
                 openEditMemberModal(memberId);
-            } else {
-                console.error('openEditMemberModal не определена');
-                showNotif('❌ Ошибка: функция редактирования не загружена', true);
             }
         });
     });
     
-    // Добавляем обработчики кликов по карточкам (просмотр информации)
+    // Добавляем обработчики кликов по карточкам
     document.querySelectorAll('.clickable-card').forEach(card => {
-        // Удаляем старый обработчик, чтобы не было дублей
         const oldHandler = card._clickHandler;
-        if (oldHandler) {
-            card.removeEventListener('click', oldHandler);
-        }
+        if (oldHandler) card.removeEventListener('click', oldHandler);
         
         const handler = () => {
             const id = parseInt(card.dataset.id);
@@ -1930,7 +1939,6 @@ function openTeamModal(m) {
         <div class="detail-row"><span class="detail-label">Discord ID:</span><span>${m.discord}</span></div>
         <div class="detail-row"><span class="detail-label">Steam ID:</span><span>${m.steamId || 'Не указан'}</span></div>
         <div class="detail-row"><span class="detail-label">Статус:</span><span>${m.status}</span></div>
-        <div class="detail-row"><span class="detail-label">Ранг:</span><span>${m.rating}</span></div>
         <div class="detail-row"><span class="detail-label">В отделе с:</span><span>${formatDate(m.joinDate)}</span></div>
         <div class="detail-row"><span class="detail-label">Категория:</span><span>${m.category === 'Старший состав' ? '👑 Старший состав' : '🌟 Младший состав'}</span></div>
         <div class="detail-row"><span class="detail-label">Обязанности:</span><span>${m.fullDetails?.responsibilities || 'Не указаны'}</span></div>
@@ -1974,14 +1982,14 @@ navs.forEach(n => {
         const teamMembersCount = membersWithNorm.length;
         const onlineCount = membersWithNorm.filter(m => m.status === "Онлайн").length;
         
-        // Подсчитываем ивенты для каждого участника
+        // ПРАВИЛЬНО
         const eventCounts = {};
         eventsData.forEach(event => {
-            const organizer = event.platform;
+            const organizer = event.organizer;  // ✅ используем organizer
             if (organizer && organizer !== "Нет" && organizer !== "") {
                 eventCounts[organizer] = (eventCounts[organizer] || 0) + 1;
             }
-        });
+        }); 
         
         // Формируем данные
         const membersStats = [];
@@ -3198,16 +3206,6 @@ function openSalaryModal() {
     if (salaryAudio) {
         salaryAudio.play().catch(e => console.log('Автовоспроизведение заблокировано, нажмите на окно'));
     }
-}
-
-// Кнопка для открытия меню на телефоне
-if (window.innerWidth <= 768) {
-    const sidebar = document.querySelector('.sidebar');
-    const btn = document.createElement('button');
-    btn.innerHTML = '☰';
-    btn.className = 'menu-toggle';
-    btn.onclick = () => sidebar.classList.toggle('show');
-    document.body.insertBefore(btn, document.body.firstChild);
 }
 
 function closeSalaryModal() {
