@@ -3200,6 +3200,16 @@ function openSalaryModal() {
     }
 }
 
+// Кнопка для открытия меню на телефоне
+if (window.innerWidth <= 768) {
+    const sidebar = document.querySelector('.sidebar');
+    const btn = document.createElement('button');
+    btn.innerHTML = '☰';
+    btn.className = 'menu-toggle';
+    btn.onclick = () => sidebar.classList.toggle('show');
+    document.body.insertBefore(btn, document.body.firstChild);
+}
+
 function closeSalaryModal() {
     salaryModal.classList.remove('show');
     if (salaryAudio) {
