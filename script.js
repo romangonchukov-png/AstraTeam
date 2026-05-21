@@ -4048,6 +4048,45 @@ async function deleteEventHandler(eventId) {
     }
 }
 
+
+// ========== ПРИНУДИТЕЛЬНАЯ УСТАНОВКА ФОНА ==========
+function setInitialBackground() {
+    const bgElement = document.getElementById('moving-bg');
+    if (bgElement) {
+        // Проверяем, есть ли сохранённый фон в настройках
+        const savedBg = localStorage.getItem('selectedBg');
+        if (savedBg && savedBg !== 'null') {
+            const bgUrls = {
+                1: 'https://i.imgur.com/MpiTIPp.jpeg',
+                2: 'https://i.imgur.com/5xGFarZ.png',
+                3: 'https://i.imgur.com/5251qqI.jpeg',
+                4: 'https://i.imgur.com/HN4JFFC.png',
+                5: 'https://i.imgur.com/dPp05Jv.png',
+                6: 'https://i.imgur.com/xp9Z6zO.jpeg'
+            };
+            if (bgUrls[savedBg]) {
+                bgElement.style.backgroundImage = `url('${bgUrls[savedBg]}')`;
+                console.log('✅ Фон загружен из настроек:', savedBg);
+                return;
+            }
+        }
+        // Фон по умолчанию
+        bgElement.style.backgroundImage = "url('https://i.imgur.com/xp9Z6zO.jpeg')";
+        bgElement.style.backgroundSize = "cover";
+        bgElement.style.backgroundPosition = "center";
+        console.log('✅ Фон установлен по умолчанию');
+    } else {
+        console.error('❌ Элемент #moving-bg не найден');
+    }
+}
+
+// Вызываем после загрузки страницы
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setInitialBackground);
+} else {
+    setInitialBackground();
+}
+
 // Глобальный обработчик кликов для кнопок (ОСНОВНОЙ)
 document.addEventListener('click', function(e) {
     // Кнопка редактирования
