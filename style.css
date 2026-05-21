@@ -3138,3 +3138,101 @@ body, .dashboard, .main-layout {
 .dashboard {
   background: transparent !important;
 }
+
+/* ========== БАЗОВЫЕ СТИЛИ (ОСТАВЛЯЮ ТОЛЬКО НУЖНОЕ) ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    position: relative;
+    overflow-x: hidden;
+    min-height: 100vh;
+    background: #050505;
+    font-family: 'Inter', sans-serif;
+    color: #e8e8e8;
+    padding: 0;
+}
+
+/* ========== ФОН (РАБОТАЕТ БЕЗ БЛЮРА) ========== */
+#moving-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat !important;
+    z-index: -2;
+    filter: blur(0px) !important;
+    opacity: 1 !important;
+    pointer-events: none;
+}
+
+/* ========== УБИРАЕМ ЗАТЕМНЕНИЕ И ЛИШНИЕ СЛОИ ========== */
+#bg-overlay,
+#parallax-container,
+.parallax-layer,
+.layer-1, .layer-2, .layer-3, .layer-4,
+#fog-layer,
+#mouse-glow,
+.brightnessOverlay {
+    display: none !important;
+}
+
+/* ========== ОСНОВНЫЕ БЛОКИ (НЕПРОЗРАЧНЫЕ) ========== */
+.dashboard {
+    background: #0a0a0a !important;
+    backdrop-filter: none !important;
+    opacity: 1 !important;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.sidebar {
+    background: #0d0d0d !important;
+    backdrop-filter: none !important;
+    border-right: 1px solid #2a2a2a !important;
+}
+
+.table-wrapper,
+.modal-card,
+.settings-card,
+.team-card,
+.addon-card {
+    background: #111 !important;
+    border: 1px solid #2a2a2a !important;
+    backdrop-filter: none !important;
+}
+
+/* ========== ТАБЛИЦЫ ========== */
+.data-table tbody tr:nth-child(even) {
+    background: #111 !important;
+}
+.data-table tbody tr:hover {
+    background: #1a1a1a !important;
+}
+
+/* ========== КНОПКИ И ПОЛЯ ВВОДА ========== */
+button, .submit-btn, .add-btn, .login-btn, .continue-btn,
+.settings-save, .comment-send-btn {
+    background: #222 !important;
+    backdrop-filter: none !important;
+    border: 1px solid #3a3a3a !important;
+}
+button:hover {
+    background: #333 !important;
+}
+
+input, select, textarea {
+    background: #1a1a1a !important;
+    border: 1px solid #333 !important;
+    color: #fff !important;
+}
+
+/* ========== ВСЁ ОСТАЛЬНОЕ (УБИРАЕМ BLUR) ========== */
+* {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
