@@ -5320,3 +5320,38 @@ setTimeout(function() {
         }
     }, 100);
 })();
+
+// ========== АВТОМАТИЧЕСКАЯ УСТАНОВКА ФОНА ==========
+(function autoFixBackground() {
+    // Ждём загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyBackgroundFix);
+    } else {
+        applyBackgroundFix();
+    }
+    
+    function applyBackgroundFix() {
+        setTimeout(function() {
+            const movingBg = document.getElementById('moving-bg');
+            if (movingBg) {
+                movingBg.style.backgroundImage = "url('https://i.imgur.com/xp9Z6zO.jpeg')";
+                movingBg.style.backgroundSize = "cover";
+                movingBg.style.backgroundPosition = "center";
+                movingBg.style.backgroundRepeat = "no-repeat";
+                movingBg.style.filter = "blur(0px)";
+            }
+            
+            const bgOverlay = document.getElementById('bg-overlay');
+            if (bgOverlay) {
+                bgOverlay.style.display = "none";
+            }
+            
+            const dashboard = document.getElementById('mainDashboard');
+            if (dashboard) {
+                dashboard.style.background = "transparent";
+            }
+            
+            console.log('✅ Фон автоматически установлен');
+        }, 50);
+    }
+})();
