@@ -5355,3 +5355,50 @@ setTimeout(function() {
         }, 50);
     }
 })();
+
+// ========== ФИКС ЧЁРНОГО ФОНА ПОСЛЕ ВХОДА ==========
+(function fixBlackBackground() {
+    // Функция, которая возвращает прозрачный фон
+    function makeBackgroundTransparent() {
+        const dashboard = document.getElementById('mainDashboard');
+        if (dashboard) {
+            dashboard.style.background = 'transparent';
+            dashboard.style.backgroundColor = 'transparent';
+            dashboard.style.backdropFilter = 'none';
+        }
+        
+        const movingBg = document.getElementById('moving-bg');
+        if (movingBg) {
+            movingBg.style.zIndex = '0';
+            movingBg.style.opacity = '1';
+        }
+        
+        const overlay = document.getElementById('bg-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+    
+    // Запускаем сразу
+    makeBackgroundTransparent();
+    
+    // Следим за изменениями и возвращаем прозрачность если кто-то ставит чёрный фон
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                const dashboard = document.getElementById('mainDashboard');
+                if (dashboard && (dashboard.style.background !== 'transparent' || dashboard.style.backgroundColor !== 'transparent')) {
+                    dashboard.style.background = 'transparent';
+                    dashboard.style.backgroundColor = 'transparent';
+                }
+            }
+        });
+    });
+    
+    if (document.getElementById('mainDashboard')) {
+        observer.observe(document.getElementById('mainDashboard'), { attributes: true });
+    }
+    
+    // Дополнительная задержка для перехвата
+    setTimeout(makeBackgroundTransparent, 100);
+    setTimeout(makeBackgroundTransparent, 500);
+    setTimeout(makeBackgroundTransparent, 1000);
+})();
