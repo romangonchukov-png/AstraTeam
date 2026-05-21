@@ -733,5 +733,75 @@
         if (dash) dash.style.background = '#0a0a0a';
     })();
 </script>
+<script>
+    (function() {
+        // Функция для установки фона и очистки затемнений
+        function setBackground() {
+            const bg = document.getElementById('moving-bg');
+            if (bg) {
+                bg.style.position = 'fixed';
+                bg.style.top = '0';
+                bg.style.left = '0';
+                bg.style.width = '100%';
+                bg.style.height = '100%';
+                bg.style.background = "url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat";
+                bg.style.zIndex = '0';
+                bg.style.filter = 'blur(0px)';
+                bg.style.opacity = '1';
+                console.log('✅ Фон установлен');
+            }
+            
+            // Делаем все основные блоки прозрачными
+            const dashboard = document.getElementById('mainDashboard');
+            if (dashboard) {
+                dashboard.style.background = 'transparent';
+                dashboard.style.backdropFilter = 'none';
+            }
+            
+            const overlay = document.getElementById('bg-overlay');
+            if (overlay) overlay.style.display = 'none';
+            
+            // Принудительно поднимаем контент над фоном
+            const mainLayout = document.querySelector('.main-layout');
+            if (mainLayout) mainLayout.style.position = 'relative';
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) sidebar.style.position = 'relative';
+        }
+        
+        // Запускаем сразу и ещё раз через 100 мс
+        setBackground();
+        setTimeout(setBackground, 100);
+        setTimeout(setBackground, 500);
+        
+        // Наблюдаем за изменениями в DOM (если что-то перезаписывает фон)
+        const observer = new MutationObserver(function() {
+            const bg = document.getElementById('moving-bg');
+            if (bg && bg.style.zIndex !== '0') {
+                setBackground();
+            }
+        });
+        observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+    })();
+</script>
+<style>
+    /* Самые приоритетные стили */
+    #moving-bg {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat !important;
+        z-index: 0 !important;
+    }
+    #mainDashboard, .dashboard, .main-layout, .content-area {
+        background: transparent !important;
+        position: relative;
+        z-index: 1;
+    }
+    #bg-overlay, .bg-overlay {
+        display: none !important;
+    }
+</style>
 </body>
 </html>
