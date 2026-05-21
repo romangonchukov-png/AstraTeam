@@ -657,5 +657,29 @@
 </script>
 
 <script src="script.js"></script>
+
+<script>
+    // ФИКС ФОНА - ЗАПУСКАЕТСЯ ПОСЛЕ ЗАГРУЗКИ ВСЕХ ЭЛЕМЕНТОВ
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            var bg = document.getElementById('moving-bg');
+            if (bg) {
+                bg.style.backgroundImage = "url('https://i.imgur.com/xp9Z6zO.jpeg')";
+                bg.style.backgroundSize = "cover";
+                bg.style.backgroundPosition = "center";
+                bg.style.backgroundRepeat = "no-repeat";
+                bg.style.filter = "blur(0px)";
+                bg.style.opacity = "1";
+                console.log('✅ Фон установлен');
+            }
+            
+            var overlay = document.getElementById('bg-overlay');
+            if (overlay) overlay.style.display = "none";
+            
+            var dash = document.getElementById('mainDashboard');
+            if (dash) dash.style.background = "transparent";
+        }, 200);
+    });
+</script>
 </body>
 </html>>>
