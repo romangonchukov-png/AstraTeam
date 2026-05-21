@@ -3074,4 +3074,16 @@ body, .dashboard, .main-layout {
   transform: scale(1.05);
 }
 
-/* ========== ПРОСТАЯ МОБИЛЬНАЯ АДАПТАЦИЯ ========== */
+/* Запасной фон если картинка не грузится */
+#moving-bg {
+    background: #0a0a0a !important;
+}
+
+.bg-option img {
+    background: #1a1a1a;
+    min-height: 70px;
+}
+
+.bg-option img[src*="imgfy.ru"] {
+    opacity: 0.7;
+}
