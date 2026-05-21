@@ -3148,9 +3148,22 @@ function applyBackground(bgId) {
         5: 'https://i.imgur.com/dPp05Jv.png',
         6: 'https://i.imgur.com/xp9Z6zO.jpeg'
     };
+    
     const bgElement = document.getElementById('moving-bg');
     if (bgElement && bgUrls[bgId]) {
+        // Принудительно меняем фон
         bgElement.style.backgroundImage = `url('${bgUrls[bgId]}')`;
+        bgElement.style.backgroundSize = "cover";
+        bgElement.style.backgroundPosition = "center";
+        bgElement.style.backgroundRepeat = "no-repeat";
+        
+        // Сохраняем в localStorage
+        localStorage.setItem('selectedBg', bgId);
+        
+        console.log(`✅ Фон изменён на ${bgId}`);
+        showNotif(`🖼️ Фон изменён`, false, 'success');
+    } else {
+        console.error('Фон не найден или ID не существует');
     }
 }
 
@@ -5402,3 +5415,55 @@ setTimeout(function() {
     setTimeout(makeBackgroundTransparent, 500);
     setTimeout(makeBackgroundTransparent, 1000);
 })();
+
+// ========== ПЕРЕЗАПУСК СИСТЕМЫ СМЕНЫ ФОНА ==========
+function initBackgroundSystem() {
+    const bgOptions = document.querySelectorAll('.bg-option');
+    console.log('Инициализация выбора фона, найдено:', bgOptions.length);
+    
+    bgOptions.forEach(opt => {
+        // Удаляем старые обработчики
+        const newOpt = opt.cloneNode(true);
+        opt.parentNode.replaceChild(newOpt, opt);
+        
+        newOpt.addEventListener('click', function(e) {
+            e.preventDefault();
+            const bgId = this.dataset.bg;
+            console.log('Клик по фону:', bgId);
+            
+            const bgUrls = {
+                1: 'https://i.imgur.com/MpiTIPp.jpeg',
+                2: 'https://i.imgur.com/5xGFarZ.png',
+                3: 'https://i.imgur.com/5251qqI.jpeg',
+                4: 'https://i.imgur.com/HN4JFFC.png',
+                5: 'https://i.imgur.com/dPp05Jv.png',
+                6: 'https://i.imgur.com/xp9Z6zO.jpeg'
+            };
+            
+            const bgElement = document.getElementById('moving-bg');
+            if (bgElement && bgUrls[bgId]) {
+                bgElement.style.backgroundImage = `url('${bgUrls[bgId]}')`;
+                bgElement.style.backgroundSize = "cover";
+                bgElement.style.backgroundPosition = "center";
+                bgElement.style.backgroundRepeat = "no-repeat";
+                localStorage.setItem('selectedBg', bgId);
+                
+                // Обновляем выделение
+                document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                showNotif(`✅ Фон изменён!`, false, 'success');
+                console.log('✅ Фон успешно изменён');
+            } else {
+                console.error('Ошибка: bgElement не найден или bgId не существует');
+            }
+        });
+    });
+}
+
+// Запускаем после загрузки страницы
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBackgroundSystem);
+} else {
+    initBackgroundSystem();
+}
