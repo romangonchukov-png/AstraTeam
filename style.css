@@ -38,7 +38,7 @@ body{
 
 #moving-bg{
   position:fixed;top:-6%;left:-6%;width:112%;height:112%;
-  background:url('https://i.imgur.com/dhK7cCP.jpeg') center/cover no-repeat;
+  background:url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat;  /* <- НОВЫЙ URL */
   z-index:-2;will-change:transform;
   transform:translate3d(0,0,0);backface-visibility:hidden;
   pointer-events:none
@@ -3086,4 +3086,55 @@ body, .dashboard, .main-layout {
 
 .bg-option img[src*="imgfy.ru"] {
     opacity: 0.7;
+}
+
+#moving-bg{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background: #1a1a2e !important;  /* Просто тёмный цвет */
+  z-index:-2;
+  pointer-events:none
+}
+
+/* ПЕРЕЗАПИСЬ ФОНА */
+#moving-bg {
+  background: url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat !important;
+  filter: blur(0px) !important;
+  opacity: 1 !important;
+}
+
+#bg-overlay {
+  display: none !important;
+}
+
+.dashboard {
+  background: transparent !important;
+}
+
+#moving-bg {
+  background: url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat !important;
+  filter: blur(0px) !important;
+}
+
+#moving-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat !important;
+  z-index: -2;
+  filter: blur(0px) !important;
+  pointer-events: none;
+}
+
+#bg-overlay {
+  display: none !important;
+}
+
+.dashboard {
+  background: transparent !important;
 }
