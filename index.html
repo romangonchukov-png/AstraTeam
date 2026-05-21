@@ -803,5 +803,18 @@
         display: none !important;
     }
 </style>
+<script>
+    // Постоянно следим за фоном дашборда
+    setInterval(function() {
+        const dashboard = document.getElementById('mainDashboard');
+        if (dashboard) {
+            if (dashboard.style.background !== 'transparent') {
+                dashboard.style.background = 'transparent';
+                dashboard.style.backgroundColor = 'transparent';
+                console.log('✅ Фон дашборда очищен');
+            }
+        }
+    }, 100);
+</script>
 </body>
 </html>
