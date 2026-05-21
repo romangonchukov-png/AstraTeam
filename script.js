@@ -129,18 +129,6 @@ function toggleButtonStyle() {
     showNotif(`Стиль кнопок изменён на ${currentButtonStyle === 'rounded' ? 'закруглённый' : 'прямоугольный'}`, false, 'success');
 }
 
-// Было (вызывает ошибку)
-const buttonStyleObserver = new MutationObserver(() => {
-    applyButtonStyleToAll();  // 👈 ЭТОЙ ФУНКЦИИ НЕТ!
-});
-buttonStyleObserver.observe(document.body, { childList: true, subtree: true });
-
-// Стало (просто удалите или закомментируйте)
-// const buttonStyleObserver = new MutationObserver(() => {
-//     // applyButtonStyleToAll();  // Функция не существует
-// });
-// buttonStyleObserver.observe(document.body, { childList: true, subtree: true });
-
 loadTeamFromLocalStorage();
 
 // ========== ОБЫЧНЫЕ ПЕРЕМЕННЫЕ (БЕЗ ЗАЩИТЫ) ==========
@@ -5473,3 +5461,4 @@ if (document.readyState === 'loading') {
 } else {
     initBackgroundSystem();
 }
+
