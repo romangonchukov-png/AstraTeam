@@ -9,6 +9,29 @@ let teamData = [
 // ========== СИСТЕМА УВЕДОМЛЕНИЙ СВЕРХУ ==========
 let notifications = JSON.parse(localStorage.getItem('union_notifications')) || [];
 
+// ========== ФИКС ФОНА ==========
+(function fixBackground() {
+    const bg = document.getElementById('moving-bg');
+    if (!bg) {
+        console.error('❌ #moving-bg не найден');
+        return;
+    }
+    
+    // Убираем все стили и ставим свои
+    bg.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: url('https://i.imgur.com/xp9Z6zO.jpeg') center/cover no-repeat !important;
+        z-index: -2 !important;
+        pointer-events: none !important;
+    `;
+    
+    console.log('✅ Фон принудительно установлен');
+})();
+
 function saveNotificationsLocal() {
     localStorage.setItem('union_notifications', JSON.stringify(notifications));
 }
@@ -5245,3 +5268,55 @@ function showBugReportMessage() {
         };
     }
 }
+
+// ========== ПРИНУДИТЕЛЬНАЯ УСТАНОВКА ФОНА ==========
+setTimeout(function() {
+    const bgElement = document.getElementById('moving-bg');
+    if (bgElement) {
+        bgElement.style.backgroundImage = "url('https://i.imgur.com/xp9Z6zO.jpeg')";
+        bgElement.style.backgroundSize = "cover";
+        bgElement.style.backgroundPosition = "center";
+        bgElement.style.backgroundRepeat = "no-repeat";
+        bgElement.style.filter = "blur(0px)";
+        bgElement.style.opacity = "1";
+        console.log('✅ Фон установлен принудительно');
+    }
+    
+    const overlayElement = document.getElementById('bg-overlay');
+    if (overlayElement) {
+        overlayElement.style.display = "none";
+    }
+    
+    const dashboardElement = document.getElementById('mainDashboard');
+    if (dashboardElement) {
+        dashboardElement.style.background = "transparent";
+    }
+}, 100);
+
+// ========== ФИКС ФОНА (РАБОЧАЯ ВЕРСИЯ) ==========
+(function fixBackground() {
+    setTimeout(function() {
+        const movingBg = document.getElementById('moving-bg');
+        if (movingBg) {
+            movingBg.style.backgroundImage = "url('https://i.imgur.com/xp9Z6zO.jpeg')";
+            movingBg.style.backgroundSize = "cover";
+            movingBg.style.backgroundPosition = "center";
+            movingBg.style.backgroundRepeat = "no-repeat";
+            movingBg.style.filter = "blur(0px)";
+            movingBg.style.opacity = "1";
+            console.log('✅ ФОН УСТАНОВЛЕН');
+        } else {
+            console.log('❌ #moving-bg не найден');
+        }
+        
+        const bgOverlay = document.getElementById('bg-overlay');
+        if (bgOverlay) {
+            bgOverlay.style.display = "none";
+        }
+        
+        const dashboardEl = document.getElementById('mainDashboard');
+        if (dashboardEl) {
+            dashboardEl.style.background = "transparent";
+        }
+    }, 100);
+})();
