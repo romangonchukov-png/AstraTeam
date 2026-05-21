@@ -644,6 +644,18 @@
 <div id="globalNotificationPanel" class="notification-panel-global"></div>
 <div id="notificationPanelTop" class="notification-panel-top"></div>
 
+<script>
+    // НЕМЕДЛЕННАЯ УСТАНОВКА ФОНА
+    (function() {
+        const bg = document.getElementById('moving-bg');
+        if (bg) {
+            bg.style.backgroundImage = "url('https://i.imgur.com/xp9Z6zO.jpeg')";
+            bg.style.backgroundSize = "cover";
+            bg.style.backgroundPosition = "center";
+        }
+    })();
+</script>
+
 <script src="script.js"></script>
 </body>
 </html>>>
