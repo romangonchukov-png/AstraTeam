@@ -129,11 +129,17 @@ function toggleButtonStyle() {
     showNotif(`Стиль кнопок изменён на ${currentButtonStyle === 'rounded' ? 'закруглённый' : 'прямоугольный'}`, false, 'success');
 }
 
-// Наблюдатель за изменениями DOM (для новых кнопок)
+// Было (вызывает ошибку)
 const buttonStyleObserver = new MutationObserver(() => {
-    applyButtonStyleToAll();
+    applyButtonStyleToAll();  // 👈 ЭТОЙ ФУНКЦИИ НЕТ!
 });
 buttonStyleObserver.observe(document.body, { childList: true, subtree: true });
+
+// Стало (просто удалите или закомментируйте)
+// const buttonStyleObserver = new MutationObserver(() => {
+//     // applyButtonStyleToAll();  // Функция не существует
+// });
+// buttonStyleObserver.observe(document.body, { childList: true, subtree: true });
 
 loadTeamFromLocalStorage();
 
