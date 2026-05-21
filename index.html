@@ -681,5 +681,44 @@
         }, 200);
     });
 </script>
+
+<script>
+    // АВТОМАТИЧЕСКАЯ УСТАНОВКА ФОНА
+    (function() {
+        // Функция для установки фона
+        function setBackground() {
+            var movingBg = document.getElementById('moving-bg');
+            var bgOverlay = document.getElementById('bg-overlay');
+            var dashboard = document.getElementById('mainDashboard');
+            
+            if (movingBg) {
+                movingBg.style.backgroundImage = "url('https://i.imgur.com/xp9Z6zO.jpeg')";
+                movingBg.style.backgroundSize = "cover";
+                movingBg.style.backgroundPosition = "center";
+                movingBg.style.backgroundRepeat = "no-repeat";
+                movingBg.style.filter = "blur(0px)";
+                console.log('✅ Фон установлен');
+            }
+            
+            if (bgOverlay) {
+                bgOverlay.style.display = "none";
+            }
+            
+            if (dashboard) {
+                dashboard.style.background = "transparent";
+            }
+        }
+        
+        // Запускаем сразу после загрузки страницы
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setBackground);
+        } else {
+            setBackground();
+        }
+        
+        // Дополнительная задержка на всякий случай
+        setTimeout(setBackground, 500);
+    })();
+</script>
 </body>
 </html>>>
