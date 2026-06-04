@@ -2712,6 +2712,8 @@ const errMsg = document.getElementById('errorMsg');
 const contBtn = document.getElementById('continueBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 
+
+
 function updateUIBasedOnRole() {
     const addMemberBtn = document.getElementById('addMemberNavBtn');
     if (addMemberBtn) {
@@ -2775,6 +2777,14 @@ function checkAuth() {
         if (continued === 'true') {
             welcomeContainer.classList.add('hidden');
             mainDashboard.style.display = 'block';
+
+            // Скрываем лишнее для гостя
+if (currentUser === 'Гость') {
+    document.querySelector('[data-tab="add_event"]').style.display = 'none';
+    document.getElementById('ticketsEditorBtn').style.display = 'none';
+    document.getElementById('manageTeamBtn').style.display = 'none';
+    document.getElementById('importTicketsBtn').style.display = 'none';
+}
             
             // ЗАГРУЖАЕМ ДАННЫЕ ПРИ СТАРТЕ
             showGlobalLoading();
@@ -2802,6 +2812,7 @@ function checkAuth() {
         loginOverlay.style.display = 'flex';
         welcomeContainer.classList.add('hidden');
         mainDashboard.style.display = 'none';
+        
     }
 }
 
@@ -2810,6 +2821,18 @@ async function onContinue() {
     sessionStorage.setItem('continued', 'true');
     welcomeContainer.classList.add('hidden');
     mainDashboard.style.display = 'block';
+
+    // Скрываем вкладки для гостя после входа
+if (currentUser === 'Гость') {
+    document.querySelector('[data-tab="add_event"]').style.display = 'none';
+    document.querySelector('[data-tab="event_guidee"]').style.display = 'none';
+    document.querySelector('[data-tab="event_guide"]').style.display = 'none';
+    document.querySelector('[data-tab="event_adons"]').style.display = 'none';
+    document.getElementById('salaryBtn').style.display = 'none';
+    
+    var creatorSection = document.querySelector('.nav-section:last-child');
+    if (creatorSection) creatorSection.style.display = 'none';
+}
     
     showGlobalLoading();
     
@@ -2831,6 +2854,8 @@ async function onContinue() {
 }
 
 let cachedPasswords = null;
+
+
 
 async function doLogin() {
     const login = loginInput.value.trim();
@@ -2939,6 +2964,71 @@ function logout() {
 }
 
 loginBtn.addEventListener('click', doLogin);
+// ГОСТЕВОЙ РЕЖИМ
+// ГОСТЕВОЙ РЕЖИМ
+document.getElementById('guestBtn').addEventListener('click', function() {
+    currentUser = 'Гость';
+    isEditor = false;
+    
+    sessionStorage.setItem('user', 'Гость');
+    sessionStorage.setItem('isEditor', 'false');
+    sessionStorage.setItem('continued', 'false');
+    
+    loginOverlay.style.display = 'none';
+    welcomeContainer.classList.remove('hidden');
+    mainDashboard.style.display = 'none';
+    
+    updateSidebarAvatar('Гость');
+    updateUIBasedOnRole();
+    errMsg.classList.remove('show');
+    
+    // ===== СКРЫВАЕМ ЛИШНИЕ ВКЛАДКИ ДЛЯ ГОСТЯ =====
+    document.querySelector('[data-tab="add_event"]').style.display = 'none';       // Добавить ивент
+    document.querySelector('[data-tab="event_guidee"]').style.display = 'none';     // Норма
+    document.querySelector('[data-tab="event_guide"]').style.display = 'none';      // Методичка
+    document.querySelector('[data-tab="event_adons"]').style.display = 'none';      // Адонны
+    document.getElementById('salaryBtn').style.display = 'none';                    // Повышение
+    
+    // Скрываем всю секцию "КРЕАТОРЫ"
+    var creatorSection = document.querySelector('.nav-section:last-child');
+    if (creatorSection) creatorSection.style.display = 'none';
+    
+    // Скрываем заголовки секций если они пустые
+    var navSections = document.querySelectorAll('.nav-section');
+    navSections.forEach(function(section) {
+        var visibleItems = section.querySelectorAll('.nav-item:not([style*="display: none"])');
+        if (visibleItems.length === 0) {
+            section.style.display = 'none';
+        }
+    });
+    // =============================================
+});
+
+// ===== ВОЗВРАЩАЕМ ВКЛАДКИ ПРИ ВЫХОДЕ ИЗ ГОСТЯ =====
+// Найди функцию logout и добавь в неё восстановление вкладок
+var originalLogoutFunc = logout;
+logout = function() {
+    // Восстанавливаем все скрытые вкладки
+    var allTabs = ['add_event', 'event_guidee', 'event_guide', 'event_adons'];
+    allTabs.forEach(function(tab) {
+        var el = document.querySelector('[data-tab="' + tab + '"]');
+        if (el) el.style.display = '';
+    });
+    
+    var salaryBtn = document.getElementById('salaryBtn');
+    if (salaryBtn) salaryBtn.style.display = '';
+    
+    var creatorSection = document.querySelector('.nav-section:last-child');
+    if (creatorSection) creatorSection.style.display = '';
+    
+    var navSections = document.querySelectorAll('.nav-section');
+    navSections.forEach(function(section) {
+        section.style.display = '';
+    });
+    
+    // Вызываем оригинальный logout
+    originalLogoutFunc();
+};
 contBtn.addEventListener('click', onContinue);
 logoutBtn.addEventListener('click', logout);
 loginInput.addEventListener('keypress', e => e.key === 'Enter' && doLogin());
@@ -5410,6 +5500,8 @@ setTimeout(function() {
     setTimeout(makeBackgroundTransparent, 1000);
 })();
 
+
+
 // ========== ПЕРЕЗАПУСК СИСТЕМЫ СМЕНЫ ФОНА ==========
 function initBackgroundSystem() {
     const bgOptions = document.querySelectorAll('.bg-option');
@@ -5462,3 +5554,121 @@ if (document.readyState === 'loading') {
     initBackgroundSystem();
 }
 
+// ========== ТЕМЫ (СВЕТЛАЯ / ТЁМНАЯ) ==========
+(function initThemes() {
+    var themeBtns = document.querySelectorAll('.theme-btn');
+    if (!themeBtns.length) return;
+    
+    themeBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var theme = this.getAttribute('data-theme');
+            document.body.classList.remove('light-mode');
+            if (theme === 'light') {
+                document.body.classList.add('light-mode');
+            }
+            localStorage.setItem('theme', theme);
+            
+            themeBtns.forEach(function(b) {
+                b.style.border = '2px solid transparent';
+            });
+            this.style.border = '2px solid #888';
+        });
+    });
+    
+    // Загружаем сохранённую тему
+    var savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+    }
+})();
+
+// ========== ЦВЕТ ТЕКСТА ==========
+(function initAccentColor() {
+    var colorDots = document.querySelectorAll('.color-dot');
+    if (!colorDots.length) return;
+    
+    function setTextColor(color) {
+        // Меняем CSS-переменные
+        document.documentElement.style.setProperty('--text-primary', color);
+        document.documentElement.style.setProperty('--text-secondary', color);
+        document.documentElement.style.setProperty('--accent', color);
+        
+        // Меняем цвет у всех span, div, p, td, th, h1-h4, label, strong, a
+        var textElements = document.querySelectorAll('span, div, p, td, th, h1, h2, h3, h4, label, strong, a, .stat-value, .team-name, .comment-text, .nav-item span, .detail-row span, .page-header h2, .section-title, .team-info-value');
+        textElements.forEach(function(el) {
+            // Не трогаем кнопки, инпуты, иконки
+            if (!el.closest('button') && !el.closest('input') && !el.closest('select') && !el.closest('textarea') && !el.closest('svg') && !el.closest('.icon') && !el.closest('.color-dot') && !el.closest('.theme-btn')) {
+                el.style.color = color;
+            }
+        });
+    }
+    
+    colorDots.forEach(function(dot) {
+        dot.addEventListener('click', function() {
+            var color = this.getAttribute('data-color');
+            setTextColor(color);
+            localStorage.setItem('accentColor', color);
+            
+            // Обновляем обводку у всех точек
+            colorDots.forEach(function(d) {
+                var dotColor = d.getAttribute('data-color');
+                if (dotColor === '#ffffff') {
+                    d.style.border = '3px solid rgba(0,0,0,0.3)';
+                } else if (dotColor === '#1a1a1a') {
+                    d.style.border = '3px solid rgba(255,255,255,0.3)';
+                } else {
+                    d.style.border = '3px solid transparent';
+                }
+            });
+            
+            // Активная точка
+            if (color === '#ffffff') {
+                this.style.border = '3px solid #000';
+            } else if (color === '#1a1a1a') {
+                this.style.border = '3px solid #fff';
+            } else {
+                this.style.border = '3px solid #fff';
+            }
+        });
+    });
+    
+    // Загружаем сохранённый цвет
+    var savedColor = localStorage.getItem('accentColor');
+    if (savedColor) {
+        setTextColor(savedColor);
+    }
+})();
+
+// ========== ПРОЗРАЧНОСТЬ БЛОКОВ ==========
+(function initOpacity() {
+    var slider = document.getElementById('opacitySlider');
+    if (!slider) return;
+    
+    function setOpacity(value) {
+        var opacity = value / 100;
+        var blocks = document.querySelectorAll('.sidebar, .table-wrapper, .modal-card, .team-card, .addon-card, .settings-card, .welcome-card, .login-modal');
+        blocks.forEach(function(block) {
+            block.style.opacity = opacity;
+        });
+        localStorage.setItem('opacity', value);
+    }
+    
+    slider.addEventListener('input', function() {
+        setOpacity(this.value);
+    });
+    
+    // Загружаем сохранённое значение
+    var savedOpacity = localStorage.getItem('opacity') || '100';
+    slider.value = savedOpacity;
+    setOpacity(savedOpacity);
+})();
+
+// ========== ПРИМЕНЯЕМ ЦВЕТ ПРИ ЗАГРУЗКЕ (ДУБЛЬ-ФИКС) ==========
+document.addEventListener('DOMContentLoaded', function() {
+    var savedColor = localStorage.getItem('accentColor');
+    if (savedColor) {
+        document.documentElement.style.setProperty('--text-primary', savedColor);
+        document.documentElement.style.setProperty('--text-secondary', savedColor);
+        document.documentElement.style.setProperty('--accent', savedColor);
+    }
+});
