@@ -3273,3 +3273,76 @@ input, select, textarea {
 #moving-bg {
     z-index: -2 !important;  /* Фон должен быть ПОЗАДИ частиц */
 }
+
+.guest-btn {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    margin-top: 0.5rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
+    border-radius: 16px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.guest-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border-color: rgba(255,255,255,0.25);
+}
+
+/* СВЕТЛАЯ ТЕМА */
+body.light-mode .sidebar { background: rgba(240,240,245,0.95) !important; border-right: 1px solid #ddd !important; }
+body.light-mode .nav-item { color: #333 !important; }
+body.light-mode .nav-item .icon { fill: #555 !important; }
+body.light-mode .data-table th { color: #555 !important; background: rgba(240,240,240,0.5) !important; }
+body.light-mode .data-table td { color: #222 !important; }
+body.light-mode .data-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.02) !important; }
+body.light-mode .table-wrapper { background: rgba(255,255,255,0.8) !important; border: 1px solid #ddd !important; }
+body.light-mode .modal-card, body.light-mode .settings-card { background: rgba(255,255,255,0.9) !important; border: 1px solid #ddd !important; }
+body.light-mode .team-card { background: rgba(255,255,255,0.85) !important; border: 1px solid #ddd !important; }
+body.light-mode input, body.light-mode select, body.light-mode textarea { background: #fff !important; border: 1px solid #ccc !important; color: #222 !important; }
+body.light-mode .top-bar { color: #333 !important; }
+body.light-mode .section-title, body.light-mode .page-header h2 { color: #333 !important; }
+
+/* ПЕРЕМЕННЫЕ ДЛЯ ЦВЕТА ТЕКСТА */
+:root {
+    --accent: #c9a0ff;
+    --text-primary: #e8e8e8;
+    --text-secondary: #bbb;
+}
+
+/* Применяем цвет акцента к заголовкам и важному тексту */
+.page-header h2,
+.stat-value,
+.section-title,
+.nav-item.active,
+.welcome-card h1,
+.login-modal h2,
+.modal-header span,
+.settings-header h3,
+.team-name,
+.comment-author,
+.notification-title,
+.norm-stat-value {
+    color: var(--accent) !important;
+    transition: color 0.3s ease;
+}
+
+/* Обычный текст тоже можно подкрасить */
+.stat-label,
+.nav-title,
+.detail-label,
+.team-info-label,
+.settings-section-title,
+.comment-text,
+.data-table td {
+    transition: color 0.3s ease;
+}
