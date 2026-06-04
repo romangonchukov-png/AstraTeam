@@ -128,6 +128,13 @@
             <label>Пароль</label>
             <input type="password" id="passwordInput" placeholder="Введите пароль" autocomplete="off">
         </div>
+        
+        <!-- ГОСТЕВОЙ РЕЖИМ - вставь перед login-btn -->
+<button class="guest-btn" id="guestBtn">
+    <svg class="icon" style="fill:#aaa; width:18px; height:18px;"><use href="#ic-info"/></svg>
+    Гостевой режим
+</button>
+<div style="text-align:center; font-size:0.6rem; color:rgba(255,255,255,0.25); margin:4px 0 8px;">Просмотр без пароля</div>
 
         <button class="login-btn" id="loginBtn">Войти</button>
 
@@ -348,37 +355,40 @@
                 </div>
             </div>
             
-            
-            <div class="settings-section">
-                <div class="settings-section-title">🖼️ ВЫБОР ФОНА</div>
-                <div class="background-grid" id="backgroundGrid">
-                    <div class="bg-option" data-bg="1">
-                        <img src="https://i.imgur.com/MpiTIPp.jpeg" alt="Фон 1">
-                        <span>Улица</span>
-                    </div>
-                    <div class="bg-option" data-bg="2">
-                        <img src="https://i.imgur.com/5xGFarZ.png" alt="Фон 2">
-                        <span>Мини Гермо-Варота</span>
-                    </div>
-                    <div class="bg-option" data-bg="3">
-                        <img src="https://i.imgur.com/5251qqI.jpeg" alt="Фон 3">
-                        <span>Полицейский Участок</span>
-                    </div>
-                    <div class="bg-option" data-bg="4">
-                        <img src="https://i.imgur.com/HN4JFFC.png'" alt="Фон 4">
-                        <span>Лифт Umbrella</span>
-                    </div>
-                    <div class="bg-option" data-bg="5">
-                        <img src="https://i.imgur.com/dPp05Jv.png" alt="Фон 5">
-                        <span>Мерия</span>
-                    </div>
-                    <div class="bg-option" data-bg="6">
-                        <img src="https://i.imgur.com/xp9Z6zO.jpeg" alt="Фон 6">
-                        <span>Элитный Район</span>
-                    </div>
-                </div>
+            <!-- ТЕМЫ -->
+<div class="settings-section">
+    <div class="settings-section-title">ТЕМА</div>
+    <div style="display:flex; gap:8px;">
+        <button class="theme-btn active" data-theme="dark" style="flex:1;padding:10px;border-radius:12px;background:#1a1a2e;color:#fff;border:2px solid #888;cursor:pointer;font-size:12px;font-weight:600;">🌙 Тёмная</button>
+        <button class="theme-btn" data-theme="light" style="flex:1;padding:10px;border-radius:12px;background:#f0f0f0;color:#333;border:2px solid transparent;cursor:pointer;font-size:12px;font-weight:600;">☀️ Светлая</button>
+    </div>
+</div>
 
-            </div>
+<!-- ЦВЕТ АКЦЕНТА -->
+<div class="settings-section">
+    <div class="settings-section-title">ЦВЕТ АКЦЕНТА</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span class="color-dot active" data-color="#c9a0ff" style="width:32px;height:32px;border-radius:50%;background:#c9a0ff;cursor:pointer;border:3px solid #fff;"></span>
+        <span class="color-dot" data-color="#44ffaa" style="width:32px;height:32px;border-radius:50%;background:#44ffaa;cursor:pointer;border:3px solid transparent;"></span>
+        <span class="color-dot" data-color="#ffaa44" style="width:32px;height:32px;border-radius:50%;background:#ffaa44;cursor:pointer;border:3px solid transparent;"></span>
+        <span class="color-dot" data-color="#44aaff" style="width:32px;height:32px;border-radius:50%;background:#44aaff;cursor:pointer;border:3px solid transparent;"></span>
+        <span class="color-dot" data-color="#ff66aa" style="width:32px;height:32px;border-radius:50%;background:#ff66aa;cursor:pointer;border:3px solid transparent;"></span>
+        <span class="color-dot" data-color="#ffffff" style="width:32px;height:32px;border-radius:50%;background:#ffffff;cursor:pointer;border:3px solid rgba(0,0,0,0.3);"></span>
+        <span class="color-dot" data-color="#1a1a1a" style="width:32px;height:32px;border-radius:50%;background:#1a1a1a;cursor:pointer;border:3px solid rgba(255,255,255,0.3);"></span>
+    </div>
+</div>
+
+<!-- ПРОЗРАЧНОСТЬ -->
+<div class="settings-section">
+    <div class="settings-section-title">ПРОЗРАЧНОСТЬ БЛОКОВ</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:12px;">0%</span>
+        <input type="range" id="opacitySlider" min="60" max="100" value="100" style="flex:1;">
+        <span style="font-size:12px;">100%</span>
+    </div>
+</div>
+            
+        
         </div>
         
         <div class="settings-footer">
