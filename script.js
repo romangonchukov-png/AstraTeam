@@ -2237,11 +2237,55 @@ navs.forEach(n => {
         }
         
         const copyAllBtn = document.getElementById('copyAllMembersBtn');
-        if (copyAllBtn && allMembersTextToCopy) {
-            copyAllBtn.addEventListener('click', () => {
-                copyToClipboard(allMembersTextToCopy, copyAllBtn, `✅ Скопировано ${membersStats.length} строк!`);
-            });
-        }
+if (copyAllBtn && allMembersTextToCopy) {
+    copyAllBtn.addEventListener('click', () => {
+        // Получаем текущую дату
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = String(now.getFullYear()).slice(-2);
+        const todayDate = `${day}.${month}.${year}`;
+        
+        // Формируем заголовок
+        const header = `:bar_chart: ПРОМЕЖУТОЧНАЯ СТАТИСТИКА ИВЕНТ СОСТАВА
+:date: Дата: ${todayDate}
+:shield: Старший: <@1246076621484724320>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        
+        // Формируем футер
+        const footer = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+:warning: ВНИМАНИЕ
+У тех, кто не сделал норму, есть время до 00:00 (МСК):
+
+:one: Доделать норму и отправить мне <@1246076621484724320> | путь в никуда 
+:two: Написать мне в ЛС причину, почему норма не выполнена.
+
+ВАЖНО: Если до 00:00 от вас не будет нормы или причины в ЛС — вы получаете наказание по правилам выше.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+:4426news: РАЗМЕТКИ
+⏸️ - Мороз
+:beach: - Отпуск
+🟢 - Онлайн
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        
+        // Собираем полный текст
+        const fullText = header + '\n' + allMembersTextToCopy + '\n' + footer;
+        
+        // Копируем в буфер обмена
+        navigator.clipboard.writeText(fullText).then(() => {
+            showNotif(`✅ Скопировано ${membersStats.length} строк с форматированием!`);
+            const originalText = copyAllBtn.innerHTML;
+            copyAllBtn.innerHTML = '✅ Скопировано!';
+            setTimeout(() => {
+                copyAllBtn.innerHTML = originalText;
+            }, 2000);
+        }).catch(() => {
+            showNotif('❌ Не удалось скопировать', true);
+        });
+    });
+}
         
         hideGlobalLoading();
         
